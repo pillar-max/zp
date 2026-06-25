@@ -313,31 +313,7 @@
     <div class="filter-group">
       <label>Ответственный</label>
       <select id="fResponsible">
-        <option value="">Все</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Тип услуги</label>
-      <select id="fServiceType">
-        <option value="">Все</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Услуга</label>
-      <select id="fService">
-        <option value="">Все</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Партнёр</label>
-      <select id="fPartner">
-        <option value="">Все</option>
-        <option value="1001">ТП</option>
-        <option value="689">Выездной шиномонтаж</option>
-        <option value="688">Лоджик</option>
-        <option value="690">А24</option>
-        <option value="888">КарТакси</option>
-        <option value="1041">Подрядный эвакуатор</option>
+        <option value="">Все диспетчеры</option>
       </select>
     </div>
     <div class="filter-group">
@@ -366,6 +342,60 @@
           <option value="7919">Бородулин Кирилл</option>
           <option value="9825">Белецкий Алексей</option>
         </optgroup>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Партнёр</label>
+      <select id="fPartner">
+        <option value="">Все</option>
+        <option value="1001">ТП</option>
+        <option value="689">Выездной шиномонтаж</option>
+        <option value="688">Лоджик</option>
+        <option value="690">А24</option>
+        <option value="888">КарТакси</option>
+        <option value="1041">Подрядный эвакуатор</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Тип клиента ДЦ</label>
+      <select id="fClientType">
+        <option value="">Все</option>
+        <option value="490">Корпоративный</option>
+        <option value="491">Клубный</option>
+        <option value="516">Разовый</option>
+        <option value="680">Самонайденный</option>
+        <option value="681">Обычный</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Услуга</label>
+      <select id="fService">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Тип услуги</label>
+      <select id="fServiceType">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Стадия сделки</label>
+      <select id="fStage">
+        <option value="">Все завершённые</option>
+        <option value="C3:WON">Сделка успешна</option>
+        <option value="C3:LOSE">Отказ Приценка</option>
+        <option value="C3:UC_ZBJ6I0">Отказ от принятого заказа</option>
+        <option value="C3:UC_PXMHKB">Эквивалент</option>
+        <option value="C3:UC_Q6VZTF">Машинозаезды</option>
+        <option value="C3:NEW">Неразобранное</option>
+        <option value="C3:UC_OVJSL6">Приценка (на текущее)</option>
+        <option value="C3:UC_AN8P0Z">Приценка (на будущее)</option>
+        <option value="C3:UC_IX9ML7">Отложенный заказ</option>
+        <option value="C3:PREPARATION">Взят в работу</option>
+        <option value="C3:PREPAYMENT_INVOICE">Водитель назначен</option>
+        <option value="C3:EXECUTING">Выполнение заказа</option>
+        <option value="C3:FINAL_INVOICE">Сбор обратной связи</option>
       </select>
     </div>
     <div class="filter-group">
@@ -460,10 +490,13 @@
               <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">Часов</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">Ставка/час (₽)</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Оклад</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">Ночных смен</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">Порогов</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Конверсия %</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Бонус конв.</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">KPI (₽)</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата сделки</th>
               <th style="text-align:right;padding:10px 12px;font-weight:600;">Итого ЗП</th>
               <th style="width:32px;"></th>
             </tr>
@@ -623,7 +656,17 @@ async function loadDeals() {
   document.getElementById('btnExport').style.display = 'none';
 
   try {
-    const filter = { 'STAGE_SEMANTIC_ID': 'S', 'CATEGORY_ID': 3, '!UF_CRM_1780491813': false }; // Успешные сделки, воронка «Диспетчерская», водитель/механик заполнен
+    const filter = { 'STAGE_SEMANTIC_ID': 'S', 'CATEGORY_ID': 3, '!UF_CRM_1780491813': false };
+
+    // Если выбрана конкретная стадия — убираем фильтр по STAGE_SEMANTIC_ID
+    const stage = document.getElementById('fStage').value;
+    if (stage) {
+      delete filter['STAGE_SEMANTIC_ID'];
+      filter['STAGE_ID'] = stage;
+    }
+
+    const clientType = document.getElementById('fClientType').value;
+    if (clientType) filter['UF_CRM_1752155721'] = clientType; // Успешные сделки, воронка «Диспетчерская», водитель/механик заполнен
 
     const responsible = document.getElementById('fResponsible').value;
     if (responsible) filter['ASSIGNED_BY_ID'] = responsible;
@@ -651,7 +694,7 @@ async function loadDeals() {
     while (true) {
       const select = ['ID','TITLE','OPPORTUNITY','ASSIGNED_BY_ID','DATE_CREATE','CLOSEDATE',
                        FIELD_SERVICE_TYPE, FIELD_SERVICE, FIELD_PARTNER_COST, FIELD_KV,
-                       FIELD_PARTNER_FIELD, 'UF_CRM_1780491813'];
+                       FIELD_PARTNER_FIELD, 'UF_CRM_1780491813', 'UF_CRM_1752155721'];
 
       const r = await bx24('crm.deal.list', { FILTER: filter, SELECT: select, start });
       deals = deals.concat(r.result || []);
@@ -741,6 +784,8 @@ function renderTable(deals) {
       <td>${svcType || '—'}</td>
       <td><span class="badge ${badgeClass}">${partner || '—'}</span></td>
       <td class="amount">${fmt(amount)}</td>
+      <td style="color:#6b7280;">${partnerCost > 0 ? fmt(partnerCost) : '—'}</td>
+      <td style="color:#6b7280;">${kv > 0 ? fmt(kv) : '—'}</td>
       <td style="color:#6b7280;font-size:12px;">${pct}</td>
       <td class="company">${company !== null ? fmt(company) : '—'}</td>
       <td class="bonus">${bonus !== null ? fmt(bonus) : '—'}</td>
@@ -760,6 +805,8 @@ function renderTable(deals) {
           <th>Тип услуги</th>
           <th>Партнёр</th>
           <th>Сумма</th>
+          <th>Стоимость у партнёра</th>
+          <th>КВ партнёра</th>
           <th>Ставка к/д</th>
           <th>Компания</th>
           <th>Доплата диспетчеру</th>
@@ -860,7 +907,7 @@ function renderSummaryByEmployee(deals) {
 function exportCSV() {
   if (!allDeals.length) return;
 
-  const header = ['ID','Дата завершения','Ответственный','Водитель / Механик','Услуга','Тип услуги','Партнёр','Сумма','Доля компании','Доплата диспетчеру'];
+  const header = ['ID','Дата завершения','Ответственный','Водитель / Механик','Услуга','Тип услуги','Партнёр','Сумма','Стоимость у партнёра','КВ партнёра','Доля компании','Доплата диспетчеру'];
 
   const dataRows = allDeals.map(d => {
     const amount      = parseFloat(d.OPPORTUNITY) || 0;
@@ -886,7 +933,7 @@ function exportCSV() {
         else if (partnerCost > 0) { company = amount - partnerCost; bonus = company * 0.10; }
       }
     }
-    return [d.ID, (d.CLOSEDATE||'').slice(0,10), respName, driverName, service, svcType, partner, amount, company||'', bonus||''];
+    return [d.ID, (d.CLOSEDATE||'').slice(0,10), respName, driverName, service, svcType, partner, amount, partnerCost||'', kv||'', company||'', bonus||''];
   });
 
   // Summary rows by employee
@@ -919,7 +966,7 @@ function exportCSV() {
   // Sheet 1 — Deals
   const ws1Data = [header, ...dataRows];
   const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
-  ws1['!cols'] = [6,12,18,18,14,14,16,12,12,14].map(w => ({ wch: w }));
+  ws1['!cols'] = [22,8,10,10,10,12,8,12,10,12,10,14,12].map(w => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, ws1, 'Сделки');
 
   // Sheet 2 — Summary by employee
@@ -979,6 +1026,8 @@ function resetFilters() {
   document.getElementById('fService').value = '';
   document.getElementById('fPartner').value = '';
   document.getElementById('fDriver').value = '';
+  document.getElementById('fClientType').value = '';
+  document.getElementById('fStage').value = '';
   document.getElementById('fDateFrom').value = '';
   document.getElementById('fDateTo').value = '';
 }
@@ -1019,7 +1068,15 @@ function initMonths() {
   if (!Object.keys(salaryData).length) {
     const now = new Date();
     const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    salaryData[key] = DISPATCHERS_LIST.map(name => ({ name, hours:'', rate:'', nights:'', thresholds:'', kpi:'' }));
+    salaryData[key] = DISPATCHERS_LIST.map(name => ({
+      name,
+      hours: '',
+      rate: name === 'Зубцов Сергей Андреевич' ? '' : '135',
+      nights: '',
+      thresholds: '',
+      conversion: '',
+      kpi: ''
+    }));
   }
   rebuildMonthSelect();
 }
@@ -1044,7 +1101,10 @@ function addMonth() {
   if (!input || !/^\d{4}-\d{2}$/.test(input.trim())) { alert('Неверный формат'); return; }
   const key = input.trim();
   if (!salaryData[key]) {
-    salaryData[key] = DISPATCHERS_LIST.map(name => ({ name, hours:'', rate:'', nights:'', thresholds:'', kpi:'' }));
+    salaryData[key] = DISPATCHERS_LIST.map(name => ({
+      name, hours: '', rate: name === 'Зубцов Сергей Андреевич' ? '' : '135',
+      nights: '', thresholds: '', conversion: '', kpi: ''
+    }));
   }
   currentMonth = key;
   rebuildMonthSelect();
@@ -1079,7 +1139,7 @@ function saveSalaryData() {
 
 // ── Rows ──────────────────────────────────────────────────────────────────────
 function addSalaryRow() {
-  salaryData[currentMonth].push({ name:'', hours:'', rate:'', nights:'', thresholds:'', kpi:'' });
+  salaryData[currentMonth].push({ name:'', hours:'', rate:'', nights:'', thresholds:'', conversion:'', kpi:'' });
   renderSalaryTable();
 }
 
@@ -1100,6 +1160,11 @@ function getDealBonus(name) {
   allDeals.forEach(d => {
     const empName = usersMap[d.ASSIGNED_BY_ID] || '';
     if (empName !== name) return;
+
+    // Учитываем только сделки закрытые в текущем месяце ЗП
+    const closeMonth = (d.CLOSEDATE || '').slice(0, 7); // "YYYY-MM"
+    if (currentMonth && closeMonth !== currentMonth) return;
+
     const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
     const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
     const partner     = PARTNER_MAP[partnerVal] || partnerVal;
@@ -1124,23 +1189,34 @@ function calcSalary(row) {
   const rate       = parseFloat(row.rate)       || 0;
   const nights     = parseFloat(row.nights)     || 0;
   const thresholds = parseFloat(row.thresholds) || 0;
+  const conversion = parseFloat(row.conversion) || 0;
   const kpi        = parseFloat(row.kpi)        || 0;
   const dealBonus  = getDealBonus(row.name);
-  const base       = hours * rate;
-  const nightPay   = nights * 300;
-  const threshPay  = thresholds * 300;
-  const total      = base + nightPay + threshPay + kpi + dealBonus;
-  return { base, nightPay, threshPay, kpi, dealBonus, total };
+
+  const base        = hours * rate;
+  const nightPay    = nights * 300;
+  const threshPay   = thresholds * 300;
+
+  // Конверсионный бонус: 70%+ → 40% оклада, 60%+ → 30% оклада
+  let convBonus = 0;
+  if (conversion >= 70)      convBonus = base * 0.40;
+  else if (conversion >= 60) convBonus = base * 0.30;
+
+  const total = base + nightPay + threshPay + convBonus + kpi + dealBonus;
+  return { base, nightPay, threshPay, convBonus, kpi, dealBonus, total };
 }
 
 function updateSalaryRow(i) {
   const row = (salaryData[currentMonth] || [])[i];
   if (!row) return;
-  const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
-  const bonusSum = nightPay + threshPay + kpi + dealBonus;
-  const bonusEl  = document.getElementById(`sal-bonus-${i}`);
-  const totalEl  = document.getElementById(`sal-total-${i}`);
-  if (bonusEl) bonusEl.textContent = fmt(bonusSum);
+  const { base, nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
+  const convPct   = parseFloat(row.conversion) || 0;
+  const convLabel = convPct >= 70 ? '40% окл.' : convPct >= 60 ? '30% окл.' : '—';
+  const convEl    = document.getElementById(`sal-conv-${i}`);
+  const bonusEl   = document.getElementById(`sal-bonus-${i}`);
+  const totalEl   = document.getElementById(`sal-total-${i}`);
+  if (convEl)  convEl.innerHTML  = convBonus > 0 ? fmt(convBonus) + `<br><span style="font-size:10px">${convLabel}</span>` : '—';
+  if (bonusEl) bonusEl.textContent = fmt(dealBonus);
   if (totalEl) totalEl.textContent = fmt(total);
   updateSalarySummary();
 }
@@ -1149,9 +1225,9 @@ function updateSalarySummary() {
   const rows = salaryData[currentMonth] || [];
   let totalSalary = 0, totalBonus = 0;
   rows.forEach(row => {
-    const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+    const { nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
     totalSalary += total;
-    totalBonus  += nightPay + threshPay + kpi + dealBonus;
+    totalBonus  += nightPay + threshPay + convBonus + kpi + dealBonus;
   });
   document.getElementById('ssCount').textContent       = rows.length;
   document.getElementById('ssTotalSalary').textContent = fmt(totalSalary);
@@ -1164,8 +1240,9 @@ function renderSalaryTable() {
   const tbody = document.getElementById('salaryBody');
   tbody.innerHTML = '';
   rows.forEach((row, i) => {
-    const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
-    const bonusSum = nightPay + threshPay + kpi + dealBonus;
+    const { base, nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
+    const convPct = parseFloat(row.conversion) || 0;
+    const convLabel = convPct >= 70 ? '40% окл.' : convPct >= 60 ? '30% окл.' : '—';
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid #f9fafb';
     tr.innerHTML = `
@@ -1181,6 +1258,7 @@ function renderSalaryTable() {
         <input class="sal-input" type="number" min="0" value="${row.rate}"
           oninput="salaryInput(${i},'rate',this.value)" placeholder="0" />
       </td>
+      <td style="padding:8px 12px;text-align:right;color:#6b7280;font-size:13px;">${fmt(base)}</td>
       <td style="padding:8px 12px;">
         <input class="sal-input" type="number" min="0" value="${row.nights}"
           oninput="salaryInput(${i},'nights',this.value)" placeholder="0" />
@@ -1190,10 +1268,15 @@ function renderSalaryTable() {
           oninput="salaryInput(${i},'thresholds',this.value)" placeholder="0" />
       </td>
       <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" max="100" value="${row.conversion}"
+          oninput="salaryInput(${i},'conversion',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;text-align:right;font-size:12px;color:#6b7280;" id="sal-conv-${i}">${convBonus > 0 ? fmt(convBonus) + '<br><span style="font-size:10px">' + convLabel + '</span>' : '—'}</td>
+      <td style="padding:8px 12px;">
         <input class="sal-input" type="number" min="0" value="${row.kpi}"
           oninput="salaryInput(${i},'kpi',this.value)" placeholder="0" />
       </td>
-      <td style="padding:8px 12px;text-align:right;" id="sal-bonus-${i}" class="bonus">${fmt(bonusSum)}</td>
+      <td style="padding:8px 12px;text-align:right;" id="sal-bonus-${i}" class="bonus">${fmt(dealBonus)}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:600;" id="sal-total-${i}">${fmt(total)}</td>
       <td style="padding:8px 12px;">
         <button onclick="removeSalaryRow(${i})" style="border:none;background:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
@@ -1215,37 +1298,32 @@ function exportSalaryXLSX() {
   const label = monthLabel(currentMonth);
 
   // Build CSV with BOM then trigger download as .csv (universal)
-  const header = ['Сотрудник','Часов','Ставка/час','Оклад','Ночных смен','Доплата за ночь','Порогов','Доплата за пороги','KPI','Доплата по сделкам','Итого ЗП'];
+  const header = ['Сотрудник','Часов','Ставка/час','Оклад','Ночных смен','Доплата за ночь','Порогов','Доплата за пороги','Конверсия %','Бонус конверсии','KPI','Доплата по сделкам','Итого ЗП'];
   const dataRows = rows.map(row => {
-    const { base, nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+    const { base, nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
     return [
       row.name,
-      row.hours || 0,
-      row.rate  || 0,
-      base.toFixed(2),
-      row.nights || 0,
-      nightPay.toFixed(2),
-      row.thresholds || 0,
-      threshPay.toFixed(2),
-      kpi.toFixed(2),
-      dealBonus.toFixed(2),
-      total.toFixed(2),
+      row.hours || 0, row.rate || 0, +base.toFixed(2),
+      row.nights || 0, +nightPay.toFixed(2),
+      row.thresholds || 0, +threshPay.toFixed(2),
+      row.conversion || 0, +convBonus.toFixed(2),
+      +kpi.toFixed(2), +dealBonus.toFixed(2), +total.toFixed(2),
     ];
   });
 
-  // Total row
   const totals = rows.reduce((acc, row) => {
     const c = calcSalary(row);
     acc.base      += c.base;
     acc.nightPay  += c.nightPay;
     acc.threshPay += c.threshPay;
+    acc.convBonus += c.convBonus;
     acc.kpi       += c.kpi;
     acc.dealBonus += c.dealBonus;
     acc.total     += c.total;
     return acc;
-  }, { base:0, nightPay:0, threshPay:0, kpi:0, dealBonus:0, total:0 });
+  }, { base:0, nightPay:0, threshPay:0, convBonus:0, kpi:0, dealBonus:0, total:0 });
 
-  dataRows.push(['ИТОГО','','', totals.base.toFixed(2),'', totals.nightPay.toFixed(2),'', totals.threshPay.toFixed(2), totals.kpi.toFixed(2), totals.dealBonus.toFixed(2), totals.total.toFixed(2)]);
+  dataRows.push(['ИТОГО','','', +totals.base.toFixed(2),'', +totals.nightPay.toFixed(2),'', +totals.threshPay.toFixed(2),'', +totals.convBonus.toFixed(2), +totals.kpi.toFixed(2), +totals.dealBonus.toFixed(2), +totals.total.toFixed(2)]);
 
   const csv = '\uFEFF' + [header, ...dataRows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const a = document.createElement('a');
