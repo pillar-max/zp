@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Доплаты сотрудников — Angel Club</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F0F2F5;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+
+  header span {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  .webhook-bar {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .webhook-bar label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  .webhook-bar input {
+    flex: 1;
+    min-width: 280px;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #1a1a2e;
+    outline: none;
+  }
+
+  .webhook-bar input:focus { border-color: #6366f1; }
+
+  .filters {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    align-items: end;
+  }
+
+  .filter-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .filter-group select,
+  .filter-group input[type="date"] {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 14px;
+    color: #1a1a2e;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .filter-group select:focus,
+  .filter-group input[type="date"]:focus { border-color: #6366f1; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-secondary { background: #f3f4f6; color: #374151; }
+  .btn-small { padding: 6px 12px; font-size: 13px; }
+
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* Summary cards */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .card .label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  .card .value { font-size: 22px; font-weight: 600; color: #1a1a2e; }
+  .card.accent { background: #eef2ff; border-color: #c7d2fe; }
+  .card.accent .value { color: #4f46e5; }
+  .card.green { background: #f0fdf4; border-color: #bbf7d0; }
+  .card.green .value { color: #16a34a; }
+
+  /* Table */
+  .table-wrap {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .table-header h2 { font-size: 15px; font-weight: 600; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    background: #fafafa;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid #f9fafb;
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge-tp { background: #dbeafe; color: #1d4ed8; }
+  .badge-shin { background: #dcfce7; color: #15803d; }
+  .badge-other { background: #f3f4f6; color: #6b7280; }
+
+  .amount { font-weight: 500; }
+  .bonus { font-weight: 600; color: #4f46e5; }
+  .company { color: #16a34a; font-weight: 500; }
+
+  .state-box {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+  }
+
+  .state-box .icon { font-size: 40px; margin-bottom: 12px; }
+  .state-box p { font-size: 14px; }
+
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .footer-note {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 12px;
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .filters { grid-template-columns: 1fr 1fr; }
+    th, td { padding: 8px 10px; }
+  }
+
+  /* Tabs */
+  header { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; background: transparent; color: #6b7280;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab.active { background: #eef2ff; color: #4f46e5; }
+  .tab:hover:not(.active) { background: #f3f4f6; }
+
+  /* Salary table inputs */
+  .sal-input {
+    width: 100%; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 6px 8px; font-size: 13px; text-align: right;
+    background: #fff; outline: none; min-width: 70px;
+  }
+  .sal-input:focus { border-color: #6366f1; }
+  .sal-name { font-weight: 500; color: #1a1a2e; min-width: 140px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Расчёт доплат сотрудников</h1>
+    <span>Данные из Bitrix24</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" onclick="switchTab('deals')">Сделки и доплаты</button>
+    <button class="tab" onclick="switchTab('salary')">Расчёт ЗП</button>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- ══════════════════ ВКЛАДКА: СДЕЛКИ ══════════════════ -->
+  <div id="tabDeals">
+
+  <!-- Webhook input -->
+  <div class="webhook-bar">
+    <label>Вебхук Bitrix24</label>
+    <input type="text" id="webhookUrl" placeholder="https://portal.bitrix24.ru/rest/1/xxxxxxx/" value="https://portal.angelclub.ru/rest/1884/2tkl8ttfju7uj0tr/" />
+    <button class="btn btn-secondary" onclick="loadFields()">Подключить</button>
+  </div>
+
+  <div id="errorBox" class="error-msg" style="display:none;"></div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Ответственный</label>
+      <select id="fResponsible">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Тип услуги</label>
+      <select id="fServiceType">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Услуга</label>
+      <select id="fService">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Партнёр</label>
+      <select id="fPartner">
+        <option value="">Все</option>
+        <option value="1001">ТП</option>
+        <option value="689">Выездной шиномонтаж</option>
+        <option value="688">Лоджик</option>
+        <option value="690">А24</option>
+        <option value="888">КарТакси</option>
+        <option value="1041">Подрядный эвакуатор</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Водитель / Механик</label>
+      <select id="fDriver">
+        <option value="">Все</option>
+        <optgroup label="Водители эвакуатора">
+          <option value="6194">Радюшкин Дмитрий</option>
+          <option value="6195">Смышляев Александр</option>
+          <option value="6196">Суханов Александр</option>
+          <option value="6197">Репин Роман</option>
+          <option value="6198">Нарышкин Павел</option>
+          <option value="6199">Станкевич Сергей</option>
+          <option value="6200">Кровлин Андрей</option>
+          <option value="9315">Кулешов Сергей</option>
+          <option value="9826">Пронь Виталий</option>
+          <option value="9317">Партнер</option>
+        </optgroup>
+        <optgroup label="Механики">
+          <option value="6202">Паушкин Ян</option>
+          <option value="6203">Порохов Дмитрий</option>
+          <option value="6204">Ступеньков Максим</option>
+          <option value="6205">Юсупов Никита</option>
+          <option value="6206">Алексеев Максим</option>
+          <option value="6207">Каралкин Александр</option>
+          <option value="7919">Бородулин Кирилл</option>
+          <option value="9825">Белецкий Алексей</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Дата завершения от</label>
+      <input type="date" id="fDateFrom" />
+    </div>
+    <div class="filter-group">
+      <label>Дата завершения до</label>
+      <input type="date" id="fDateTo" />
+    </div>
+    <div class="filter-group actions">
+      <button class="btn btn-primary" id="btnLoad" onclick="loadDeals()">
+        Загрузить сделки
+      </button>
+      <button class="btn btn-secondary" onclick="resetFilters()">Сбросить</button>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary" id="summary" style="display:none;">
+    <div class="card">
+      <div class="label">Сделок</div>
+      <div class="value" id="sCount">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Сумма сделок</div>
+      <div class="value" id="sAmount">0 ₽</div>
+    </div>
+    <div class="card green">
+      <div class="label">Выручка компании</div>
+      <div class="value" id="sCompany">0 ₽</div>
+    </div>
+    <div class="card accent">
+      <div class="label">Итого доплат</div>
+      <div class="value" id="sBonus">0 ₽</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-header">
+      <h2>Сделки</h2>
+      <button class="btn btn-secondary btn-small" onclick="exportCSV()" id="btnExport" style="display:none;">
+        ↓ Скачать Excel
+      </button>
+    </div>
+    <div id="tableBody">
+      <div class="state-box">
+        <div class="icon">⚙️</div>
+        <p>Подключитесь к Bitrix24 и нажмите «Загрузить сделки»</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary by employee -->
+  <div class="table-wrap" id="summaryByEmp" style="display:none; margin-top: 16px;">
+    <div class="table-header">
+      <h2>Сводная по сотрудникам</h2>
+    </div>
+    <div id="summaryByEmpBody"></div>
+  </div>
+
+  <p class="footer-note">ТП → компания 20%, диспетчер 10% от доли (= 2% от сделки) &nbsp;|&nbsp; Выездной шиномонтаж → компания 15%, диспетчер 1.5% &nbsp;|&nbsp; Лоджик / КарТакси / А24 / Подрядный эвакуатор → компания = разница (или КВ), диспетчер 10% от этого</p>
+
+  </div><!-- /tabDeals -->
+
+  <!-- ══════════════════ ВКЛАДКА: ЗП ══════════════════ -->
+  <div id="tabSalary" style="display:none;">
+
+    <!-- Month bar -->
+    <div class="webhook-bar" style="margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Месяц</label>
+      <select id="salaryMonth" onchange="onMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;flex:1;min-width:160px;">
+      </select>
+      <button class="btn btn-secondary btn-small" onclick="addMonth()">+ Новый месяц</button>
+      <button class="btn btn-secondary btn-small" onclick="deleteMonth()" style="color:#dc2626;">✕ Удалить месяц</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="saveSalaryData()">💾 Сохранить</button>
+      <button class="btn btn-primary" onclick="exportSalaryXLSX()">↓ Скачать Excel</button>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <div class="table-header">
+        <h2 id="salaryMonthTitle">ЗП</h2>
+        <button class="btn btn-secondary btn-small" onclick="addSalaryRow()">+ Сотрудник</button>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table id="salaryTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;border-bottom:1px solid #f3f4f6;">
+              <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Часов</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Ставка/час (₽)</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Ночных смен</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Порогов</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">KPI (₽)</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата</th>
+              <th style="text-align:right;padding:10px 12px;font-weight:600;">Итого ЗП</th>
+              <th style="width:32px;"></th>
+            </tr>
+          </thead>
+          <tbody id="salaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Salary summary cards -->
+    <div class="summary" id="salarySummary" style="display:none;">
+      <div class="card">
+        <div class="label">Сотрудников</div>
+        <div class="value" id="ssCount">0</div>
+      </div>
+      <div class="card green">
+        <div class="label">Фонд ЗП</div>
+        <div class="value" id="ssTotalSalary">0 ₽</div>
+      </div>
+      <div class="card accent">
+        <div class="label">Всего доплат</div>
+        <div class="value" id="ssTotalBonus">0 ₽</div>
+      </div>
+    </div>
+
+    <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +300 ₽ &nbsp;|&nbsp; Доплата из вкладки «Сделки» подтягивается автоматически если совпадает имя</p>
+  </div><!-- /tabSalary -->
+
+</div><!-- /container -->
+
+<script>
+// ─── Config ────────────────────────────────────────────────────────────────
+const RATES = {
+  'ТП':                   { mode: 'percent', company: 0.20, dispatcher: 0.10 },
+  'Выездной шиномонтаж':  { mode: 'percent', company: 0.15, dispatcher: 0.10 },
+  'Лоджик':               { mode: 'diff' },
+  'КарТакси':             { mode: 'diff' },
+  'А24':                  { mode: 'diff' },
+  'Подрядный эвакуатор':  { mode: 'diff' },
+};
+
+// Field IDs — hardcoded from Bitrix24
+const FIELD_SERVICE_TYPE  = 'UF_CRM_1758038789';   // "Тип услуги"
+const FIELD_SERVICE       = 'UF_CRM_1695043676';   // "Услуга"
+const FIELD_PARTNER_FIELD = 'UF_CRM_1758706196025'; // "Передан партнеру"
+const FIELD_PARTNER_COST  = 'UF_CRM_1782370680463'; // "Стоимость заказа у партнёра" (money)
+const FIELD_KV            = 'UF_CRM_1782370781998'; // "КВ партнёра" (money)
+
+// ID → название для поля "Услуга"
+const SERVICE_MAP = {
+  313:'Техпомощь', 314:'Приценка', 315:'Эвакуация', 316:'Эквивалент',
+  1004:'Ложный вызов', 799:'Манипулятор', 932:'Вступление в клуб',
+  928:'Машинозаезд', 931:'Шиномонтаж', 933:'КАСКО', 934:'ОСАГО',
+  935:'Трезвый водитель', 936:'Другое', 937:'Техническая поддержка',
+  938:'(агент) Продление карты через агента', 939:'(агент) Продление карты через менеджера',
+  940:'Детейлинг', 941:'Изменение данных в клубной карте', 942:'Запись к партнеру',
+  943:'(приложение) НЕ член клуба', 944:'(приложение) Член клуба',
+  945:'Подготовка к продаже авто', 946:'Покупка автомобиля',
+  947:'Помощь в выборе авто', 948:'Продление действующей карты',
+};
+
+// ID → название для поля "Тип услуги"
+const SERVICE_TYPE_MAP = {
+  544:'Запуск АКБ', 545:'Отключение сигнализации', 546:'Диагностика',
+  547:'Вскрытие', 548:'Довоз бензина', 549:'Замена колеса', 550:'Подкачка',
+  551:'Продажа АКБ', 552:'Замена АКБ', 803:'Шиномонтаж',
+  985:'Полная зарядка АКБ', 987:'Манипулятор', 988:'Эвакуатор',
+  989:'Вытягивание из паркинга', 986:'Другие работы',
+};
+
+// ID → название для поля "Передан партнеру"
+const PARTNER_MAP = {
+  688:'Лоджик', 689:'Выездной шиномонтаж', 690:'А24',
+  888:'КарТакси', 1001:'ТП', 1041:'Подрядный эвакуатор',
+};
+
+// Парсинг поля типа money ("5000|RUB" → 5000)
+function parseMoney(val) {
+  if (!val) return 0;
+  const s = String(val).split('|')[0];
+  return parseFloat(s) || 0;
+}
+
+// ID → имя для водителей и механиков
+const driversMap = {
+  6194:'Радюшкин Дмитрий', 6195:'Смышляев Александр', 6196:'Суханов Александр',
+  6197:'Репин Роман', 6198:'Нарышкин Павел', 6199:'Станкевич Сергей',
+  6200:'Кровлин Андрей', 9315:'Кулешов Сергей', 9826:'Пронь Виталий',
+  9317:'Партнер',
+  6202:'Паушкин Ян', 6203:'Порохов Дмитрий', 6204:'Ступеньков Максим',
+  6205:'Юсупов Никита', 6206:'Алексеев Максим', 6207:'Каралкин Александр',
+  7919:'Бородулин Кирилл', 9825:'Белецкий Алексей',
+};
+
+let usersMap = {};   // id → name
+let allDeals = [];   // last loaded deals
+
+// ─── Load fields & users on connect ────────────────────────────────────────
+async function loadFields() {
+  const base = getBase();
+  if (!base) return;
+  showError('');
+
+  try {
+    // Populate service type dropdown
+    const sel = document.getElementById('fServiceType');
+    sel.innerHTML = '<option value="">Все</option>';
+    Object.entries(SERVICE_TYPE_MAP).forEach(([id, name]) => {
+      sel.innerHTML += `<option value="${id}">${name}</option>`;
+    });
+
+    // Populate service dropdown
+    const selS = document.getElementById('fService');
+    selS.innerHTML = '<option value="">Все</option>';
+    Object.entries(SERVICE_MAP).forEach(([id, name]) => {
+      selS.innerHTML += `<option value="${id}">${name}</option>`;
+    });
+
+    // No need to call crm.deal.fields — all field IDs are hardcoded
+
+    // Hardcoded dispatchers with their Bitrix24 IDs
+    usersMap = {
+      '9328':  'Потапов Станислав',
+      '1829':  'Тимченко Иван Александрович',
+      '6902':  'Борозенец Юлия',
+      '2311':  'Парамонов Никита',
+      '5240':  'Сидельник Владимир',
+      '6903':  'Тинякова Вероника',
+      '12363': 'Чирикин Александр',
+      '1884':  'Зубцов Сергей Андреевич',
+    };
+
+    const selR = document.getElementById('fResponsible');
+    selR.innerHTML = '<option value="">Все диспетчеры</option>';
+    Object.entries(usersMap).forEach(([id, name]) => {
+      selR.innerHTML += `<option value="${id}">${name}</option>`;
+    });
+    showError('');
+    alert('Подключено! Поля загружены. Теперь выберите фильтры и нажмите «Загрузить сделки».');
+  } catch(e) {
+    showError('Ошибка подключения: ' + e.message);
+  }
+}
+
+// ─── Load deals ─────────────────────────────────────────────────────────────
+async function loadDeals() {
+  const base = getBase();
+  if (!base) return;
+  showError('');
+
+  const btn = document.getElementById('btnLoad');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Загрузка...';
+
+  document.getElementById('tableBody').innerHTML = `<div class="state-box"><span class="spinner"></span><p>Загружаем сделки…</p></div>`;
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('btnExport').style.display = 'none';
+
+  try {
+    const filter = { 'STAGE_SEMANTIC_ID': 'S', 'CATEGORY_ID': 3, '!UF_CRM_1780491813': false }; // Успешные сделки, воронка «Диспетчерская», водитель/механик заполнен
+
+    const responsible = document.getElementById('fResponsible').value;
+    if (responsible) filter['ASSIGNED_BY_ID'] = responsible;
+
+    const dateFrom = document.getElementById('fDateFrom').value;
+    const dateTo   = document.getElementById('fDateTo').value;
+    if (dateFrom) filter['>=CLOSEDATE'] = dateFrom + 'T00:00:00';
+    if (dateTo)   filter['<=CLOSEDATE'] = dateTo   + 'T23:59:59';
+
+    const partner = document.getElementById('fPartner').value;
+    if (partner) filter[FIELD_PARTNER_FIELD] = partner;
+
+    const driver = document.getElementById('fDriver').value;
+    if (driver) filter['UF_CRM_1780491813'] = driver;
+
+    const serviceType = document.getElementById('fServiceType').value;
+    if (serviceType) filter[FIELD_SERVICE_TYPE] = serviceType;
+
+    const service = document.getElementById('fService').value;
+    if (service) filter[FIELD_SERVICE] = service;
+
+    // Paginate — Bitrix returns max 50 per call
+    let deals = [];
+    let start = 0;
+    while (true) {
+      const select = ['ID','TITLE','OPPORTUNITY','ASSIGNED_BY_ID','DATE_CREATE','CLOSEDATE',
+                       FIELD_SERVICE_TYPE, FIELD_SERVICE, FIELD_PARTNER_COST, FIELD_KV,
+                       FIELD_PARTNER_FIELD, 'UF_CRM_1780491813'];
+
+      const r = await bx24('crm.deal.list', { FILTER: filter, SELECT: select, start });
+      deals = deals.concat(r.result || []);
+      if (!r.next || deals.length >= (r.total || 0)) break;
+      start = r.next;
+      if (deals.length > 2000) break; // safety cap
+    }
+
+    // Дополнительная фильтрация на клиенте — только сделки с заполненным водителем/механиком
+    deals = deals.filter(d => d['UF_CRM_1780491813'] && d['UF_CRM_1780491813'].length);
+    allDeals = deals;
+    renderTable(deals);
+  } catch(e) {
+    showError('Ошибка загрузки сделок: ' + e.message);
+    document.getElementById('tableBody').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Загрузить сделки';
+  }
+}
+
+// ─── Render ─────────────────────────────────────────────────────────────────
+function renderTable(deals) {
+  if (!deals.length) {
+    document.getElementById('tableBody').innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>Сделки не найдены по выбранным фильтрам</p></div>`;
+    document.getElementById('summary').style.display = 'none';
+    document.getElementById('summaryByEmp').style.display = 'none';
+    return;
+  }
+
+  let totalAmount = 0, totalCompany = 0, totalBonus = 0;
+  let rows = '';
+
+  deals.forEach(d => {
+    const amount      = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner     = PARTNER_MAP[partnerVal] || partnerVal;
+    const svcTypeId   = d[FIELD_SERVICE_TYPE];
+    const serviceId   = d[FIELD_SERVICE];
+    const svcType     = svcTypeId ? (SERVICE_TYPE_MAP[svcTypeId] || svcTypeId) : '';
+    const service     = serviceId ? (SERVICE_MAP[serviceId]      || serviceId) : '';
+    const respName    = usersMap[d.ASSIGNED_BY_ID] || d.ASSIGNED_BY_ID || '—';
+    const dateStr     = d.CLOSEDATE ? d.CLOSEDATE.slice(0,10) : '—';
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv          = parseMoney(d[FIELD_KV]);
+
+    // Водитель/механик (множественное поле — берём первого)
+    const driverRaw = d['UF_CRM_1780491813'];
+    const driverIds = Array.isArray(driverRaw) ? driverRaw : (driverRaw ? [driverRaw] : []);
+    const driverName = driverIds.map(id => usersMap[id] || driversMap[id] || id).join(', ') || '—';
+
+    const rate = RATES[partner];
+    let company = null, bonus = null, pct = '—';
+
+    if (rate) {
+      if (rate.mode === 'percent') {
+        company = amount * rate.company;
+        bonus   = company * rate.dispatcher;
+        pct     = `${rate.company * 100}% / 10%`;
+      } else if (rate.mode === 'diff') {
+        if (kv > 0) {
+          // Вариант 2: КВ партнёра задан явно
+          bonus   = kv * 0.10;
+          company = kv;
+          pct     = 'КВ × 10%';
+        } else if (partnerCost > 0) {
+          // Вариант 1: разница между суммой сделки и стоимостью у партнёра
+          company = amount - partnerCost;
+          bonus   = company * 0.10;
+          pct     = 'Разница × 10%';
+        }
+      }
+    }
+
+    if (company !== null) { totalCompany += company; totalBonus += bonus; }
+    totalAmount += amount;
+
+    const badgeClass = partner === 'ТП' ? 'badge-tp' : partner === 'Выездной шиномонтаж' ? 'badge-shin' : 'badge-other';
+
+    rows += `<tr>
+      <td>${d.ID}</td>
+      <td>${dateStr}</td>
+      <td>${respName}</td>
+      <td>${driverName}</td>
+      <td>${service || '—'}</td>
+      <td>${svcType || '—'}</td>
+      <td><span class="badge ${badgeClass}">${partner || '—'}</span></td>
+      <td class="amount">${fmt(amount)}</td>
+      <td style="color:#6b7280;font-size:12px;">${pct}</td>
+      <td class="company">${company !== null ? fmt(company) : '—'}</td>
+      <td class="bonus">${bonus !== null ? fmt(bonus) : '—'}</td>
+    </tr>`;
+  });
+
+  document.getElementById('tableBody').innerHTML = `
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Дата завершения</th>
+          <th>Ответственный</th>
+          <th>Водитель / Механик</th>
+          <th>Услуга</th>
+          <th>Тип услуги</th>
+          <th>Партнёр</th>
+          <th>Сумма</th>
+          <th>Ставка к/д</th>
+          <th>Компания</th>
+          <th>Доплата диспетчеру</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>`;
+
+  // Summary cards
+  document.getElementById('sCount').textContent   = deals.length;
+  document.getElementById('sAmount').textContent  = fmt(totalAmount);
+  document.getElementById('sCompany').textContent = fmt(totalCompany);
+  document.getElementById('sBonus').textContent   = fmt(totalBonus);
+  document.getElementById('summary').style.display = 'grid';
+  document.getElementById('btnExport').style.display = 'inline-flex';
+
+  renderSummaryByEmployee(deals);
+}
+
+// ─── Summary by employee ─────────────────────────────────────────────────────
+function renderSummaryByEmployee(deals) {
+  const empData = {}; // id → { name, count, amount, company, bonus }
+
+  deals.forEach(d => {
+    const id     = d.ASSIGNED_BY_ID;
+    const name   = usersMap[id] || id || '—';
+    const amount = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerRaw = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner    = PARTNER_MAP[partnerVal] || partnerVal;
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv          = parseMoney(d[FIELD_KV]);
+    const rate = RATES[partner];
+
+    let company = 0, bonus = 0;
+    if (rate) {
+      if (rate.mode === 'percent') {
+        company = amount * rate.company;
+        bonus   = company * rate.dispatcher;
+      } else if (rate.mode === 'diff') {
+        if (kv > 0)               { company = kv; bonus = kv * 0.10; }
+        else if (partnerCost > 0) { company = amount - partnerCost; bonus = company * 0.10; }
+      }
+    }
+
+    if (!empData[id]) empData[id] = { name, count: 0, amount: 0, company: 0, bonus: 0 };
+    empData[id].count   += 1;
+    empData[id].amount  += amount;
+    empData[id].company += company;
+    empData[id].bonus   += bonus;
+  });
+
+  const sorted = Object.values(empData).sort((a, b) => b.bonus - a.bonus);
+
+  let rows = '';
+  sorted.forEach(e => {
+    rows += `<tr>
+      <td style="font-weight:500;">${e.name}</td>
+      <td style="text-align:right;">${e.count}</td>
+      <td style="text-align:right;" class="amount">${fmt(e.amount)}</td>
+      <td style="text-align:right;" class="company">${fmt(e.company)}</td>
+      <td style="text-align:right;" class="bonus">${fmt(e.bonus)}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  const totAmount  = sorted.reduce((s, e) => s + e.amount, 0);
+  const totCompany = sorted.reduce((s, e) => s + e.company, 0);
+  const totBonus   = sorted.reduce((s, e) => s + e.bonus, 0);
+  const totCount   = sorted.reduce((s, e) => s + e.count, 0);
+  rows += `<tr style="border-top: 2px solid #e5e7eb; font-weight:600; background:#fafafa;">
+    <td>Итого</td>
+    <td style="text-align:right;">${totCount}</td>
+    <td style="text-align:right;">${fmt(totAmount)}</td>
+    <td style="text-align:right; color:#16a34a;">${fmt(totCompany)}</td>
+    <td style="text-align:right; color:#4f46e5;">${fmt(totBonus)}</td>
+  </tr>`;
+
+  document.getElementById('summaryByEmpBody').innerHTML = `
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead>
+        <tr style="color:#9ca3af; font-size:11px; text-transform:uppercase; letter-spacing:.06em; background:#fafafa; border-bottom:1px solid #f3f4f6;">
+          <th style="text-align:left; padding:10px 16px; font-weight:600;">Сотрудник</th>
+          <th style="text-align:right; padding:10px 16px; font-weight:600;">Сделок</th>
+          <th style="text-align:right; padding:10px 16px; font-weight:600;">Сумма сделок</th>
+          <th style="text-align:right; padding:10px 16px; font-weight:600;">Доля компании</th>
+          <th style="text-align:right; padding:10px 16px; font-weight:600;">Доплата</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  document.getElementById('summaryByEmp').style.display = 'block';
+}
+
+// ─── Export XLSX ─────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!allDeals.length) return;
+
+  const header = ['ID','Дата завершения','Ответственный','Водитель / Механик','Услуга','Тип услуги','Партнёр','Сумма','Доля компании','Доплата диспетчеру'];
+
+  const dataRows = allDeals.map(d => {
+    const amount      = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner     = PARTNER_MAP[partnerVal] || partnerVal;
+    const svcType     = d[FIELD_SERVICE_TYPE] ? (SERVICE_TYPE_MAP[d[FIELD_SERVICE_TYPE]] || d[FIELD_SERVICE_TYPE]) : '';
+    const service     = d[FIELD_SERVICE]      ? (SERVICE_MAP[d[FIELD_SERVICE]]            || d[FIELD_SERVICE])      : '';
+    const respName    = usersMap[d.ASSIGNED_BY_ID] || d.ASSIGNED_BY_ID || '';
+    const driverRaw   = d['UF_CRM_1780491813'];
+    const driverIds   = Array.isArray(driverRaw) ? driverRaw : (driverRaw ? [driverRaw] : []);
+    const driverName  = driverIds.map(id => usersMap[id] || driversMap[id] || id).join(', ') || '';
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv          = parseMoney(d[FIELD_KV]);
+    const rate        = RATES[partner];
+    let company = 0, bonus = 0;
+    if (rate) {
+      if (rate.mode === 'percent') {
+        company = amount * rate.company;
+        bonus   = company * rate.dispatcher;
+      } else if (rate.mode === 'diff') {
+        if (kv > 0)               { company = kv; bonus = kv * 0.10; }
+        else if (partnerCost > 0) { company = amount - partnerCost; bonus = company * 0.10; }
+      }
+    }
+    return [d.ID, (d.CLOSEDATE||'').slice(0,10), respName, driverName, service, svcType, partner, amount, company||'', bonus||''];
+  });
+
+  // Summary rows by employee
+  const empSummary = {};
+  allDeals.forEach(d => {
+    const name = usersMap[d.ASSIGNED_BY_ID] || d.ASSIGNED_BY_ID || '—';
+    const amount = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerRaw = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner = PARTNER_MAP[partnerVal] || partnerVal;
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv = parseMoney(d[FIELD_KV]);
+    const rate = RATES[partner];
+    let bonus = 0;
+    if (rate) {
+      if (rate.mode === 'percent') bonus = amount * rate.company * rate.dispatcher;
+      else if (rate.mode === 'diff') {
+        if (kv > 0) bonus = kv * 0.10;
+        else if (partnerCost > 0) bonus = (amount - partnerCost) * 0.10;
+      }
+    }
+    if (!empSummary[name]) empSummary[name] = { count: 0, amount: 0, bonus: 0 };
+    empSummary[name].count++;
+    empSummary[name].amount += amount;
+    empSummary[name].bonus  += bonus;
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1 — Deals
+  const ws1Data = [header, ...dataRows];
+  const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+  ws1['!cols'] = [6,12,18,18,14,14,16,12,12,14].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Сделки');
+
+  // Sheet 2 — Summary by employee
+  const summaryHeader = ['Сотрудник','Сделок','Сумма сделок','Доплата диспетчеру'];
+  const summaryRows = Object.entries(empSummary)
+    .sort((a,b) => b[1].bonus - a[1].bonus)
+    .map(([name, e]) => [name, e.count, e.amount, e.bonus]);
+  const ws2Data = [summaryHeader, ...summaryRows];
+  const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+  ws2['!cols'] = [22, 8, 14, 16].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws2, 'Сводная');
+
+  XLSX.writeFile(wb, 'doplaty_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function getBase() {
+  let url = document.getElementById('webhookUrl').value.trim();
+  if (!url) { showError('Введите URL вебхука'); return null; }
+  if (!url.endsWith('/')) url += '/';
+  return url;
+}
+
+async function bx24(method, params) {
+  const base = getBase();
+  const url  = base + method + '.json';
+  const body = new URLSearchParams();
+  function flatten(obj, prefix='') {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? `${prefix}[${k}]` : k;
+      if (v !== null && typeof v === 'object') flatten(v, key);
+      else body.append(key, v);
+    }
+  }
+  flatten(params);
+
+  const resp = await fetch(url, { method: 'POST', body });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error_description || data.error);
+  return data;
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₽';
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.style.display = msg ? 'block' : 'none';
+  box.textContent = msg;
+}
+
+function resetFilters() {
+  document.getElementById('fResponsible').value = '';
+  document.getElementById('fServiceType').value = '';
+  document.getElementById('fService').value = '';
+  document.getElementById('fPartner').value = '';
+  document.getElementById('fDriver').value = '';
+  document.getElementById('fDateFrom').value = '';
+  document.getElementById('fDateTo').value = '';
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tabDeals').style.display  = tab === 'deals'  ? 'block' : 'none';
+  document.getElementById('tabSalary').style.display = tab === 'salary' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0 && tab === 'deals') || (i === 1 && tab === 'salary'));
+  });
+  if (tab === 'salary') syncSalaryFromDeals();
+}
+
+// ─── Salary ───────────────────────────────────────────────────────────────────
+const DISPATCHERS_LIST = [
+  'Потапов Станислав','Тимченко Иван Александрович','Борозенец Юлия',
+  'Парамонов Никита','Сидельник Владимир','Тинякова Вероника',
+  'Чирикин Александр','Зубцов Сергей Андреевич',
+];
+
+// salaryData: { 'YYYY-MM': [ {name, hours, rate, nights, thresholds, kpi}, ... ] }
+let salaryData    = {};
+let currentMonth  = '';
+
+// ── Month helpers ──────────────────────────────────────────────────────────────
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return new Date(y, m - 1, 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+}
+
+function initMonths() {
+  const saved = localStorage.getItem('salaryData_v2');
+  if (saved) {
+    try { salaryData = JSON.parse(saved); } catch(e) { salaryData = {}; }
+  }
+  // Create current month if none exist
+  if (!Object.keys(salaryData).length) {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    salaryData[key] = DISPATCHERS_LIST.map(name => ({ name, hours:'', rate:'', nights:'', thresholds:'', kpi:'' }));
+  }
+  rebuildMonthSelect();
+}
+
+function rebuildMonthSelect() {
+  const sel = document.getElementById('salaryMonth');
+  const keys = Object.keys(salaryData).sort().reverse();
+  sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
+  if (!currentMonth || !salaryData[currentMonth]) currentMonth = keys[0];
+  sel.value = currentMonth;
+  document.getElementById('salaryMonthTitle').textContent = 'ЗП — ' + monthLabel(currentMonth);
+}
+
+function onMonthChange() {
+  currentMonth = document.getElementById('salaryMonth').value;
+  document.getElementById('salaryMonthTitle').textContent = 'ЗП — ' + monthLabel(currentMonth);
+  renderSalaryTable();
+}
+
+function addMonth() {
+  const input = prompt('Введите месяц (ГГГГ-ММ), например 2026-07:');
+  if (!input || !/^\d{4}-\d{2}$/.test(input.trim())) { alert('Неверный формат'); return; }
+  const key = input.trim();
+  if (!salaryData[key]) {
+    salaryData[key] = DISPATCHERS_LIST.map(name => ({ name, hours:'', rate:'', nights:'', thresholds:'', kpi:'' }));
+  }
+  currentMonth = key;
+  rebuildMonthSelect();
+  document.getElementById('salaryMonth').value = key;
+  renderSalaryTable();
+}
+
+function deleteMonth() {
+  if (!confirm(`Удалить месяц "${monthLabel(currentMonth)}"?`)) return;
+  delete salaryData[currentMonth];
+  currentMonth = '';
+  if (!Object.keys(salaryData).length) {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    salaryData[key] = DISPATCHERS_LIST.map(name => ({ name, hours:'', rate:'', nights:'', thresholds:'', kpi:'' }));
+  }
+  rebuildMonthSelect();
+  renderSalaryTable();
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+function saveSalaryData() {
+  try {
+    localStorage.setItem('salaryData_v2', JSON.stringify(salaryData));
+    const btn = document.querySelector('[onclick="saveSalaryData()"]');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Сохранено';
+    btn.style.color = '#16a34a';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+  } catch(e) { alert('Ошибка сохранения: ' + e.message); }
+}
+
+// ── Rows ──────────────────────────────────────────────────────────────────────
+function addSalaryRow() {
+  salaryData[currentMonth].push({ name:'', hours:'', rate:'', nights:'', thresholds:'', kpi:'' });
+  renderSalaryTable();
+}
+
+function removeSalaryRow(i) {
+  salaryData[currentMonth].splice(i, 1);
+  renderSalaryTable();
+}
+
+function salaryInput(i, field, val) {
+  salaryData[currentMonth][i][field] = val;
+  updateSalaryRow(i);
+}
+
+// ── Calc ──────────────────────────────────────────────────────────────────────
+function getDealBonus(name) {
+  if (!allDeals.length) return 0;
+  let total = 0;
+  allDeals.forEach(d => {
+    const empName = usersMap[d.ASSIGNED_BY_ID] || '';
+    if (empName !== name) return;
+    const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner     = PARTNER_MAP[partnerVal] || partnerVal;
+    const amount      = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv          = parseMoney(d[FIELD_KV]);
+    const rate        = RATES[partner];
+    if (!rate) return;
+    let bonus = 0;
+    if (rate.mode === 'percent')      bonus = amount * rate.company * rate.dispatcher;
+    else if (rate.mode === 'diff') {
+      if (kv > 0)               bonus = kv * 0.10;
+      else if (partnerCost > 0) bonus = (amount - partnerCost) * 0.10;
+    }
+    total += bonus;
+  });
+  return total;
+}
+
+function calcSalary(row) {
+  const hours      = parseFloat(row.hours)      || 0;
+  const rate       = parseFloat(row.rate)       || 0;
+  const nights     = parseFloat(row.nights)     || 0;
+  const thresholds = parseFloat(row.thresholds) || 0;
+  const kpi        = parseFloat(row.kpi)        || 0;
+  const dealBonus  = getDealBonus(row.name);
+  const base       = hours * rate;
+  const nightPay   = nights * 300;
+  const threshPay  = thresholds * 300;
+  const total      = base + nightPay + threshPay + kpi + dealBonus;
+  return { base, nightPay, threshPay, kpi, dealBonus, total };
+}
+
+function updateSalaryRow(i) {
+  const row = (salaryData[currentMonth] || [])[i];
+  if (!row) return;
+  const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+  const bonusSum = nightPay + threshPay + kpi + dealBonus;
+  const bonusEl  = document.getElementById(`sal-bonus-${i}`);
+  const totalEl  = document.getElementById(`sal-total-${i}`);
+  if (bonusEl) bonusEl.textContent = fmt(bonusSum);
+  if (totalEl) totalEl.textContent = fmt(total);
+  updateSalarySummary();
+}
+
+function updateSalarySummary() {
+  const rows = salaryData[currentMonth] || [];
+  let totalSalary = 0, totalBonus = 0;
+  rows.forEach(row => {
+    const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+    totalSalary += total;
+    totalBonus  += nightPay + threshPay + kpi + dealBonus;
+  });
+  document.getElementById('ssCount').textContent       = rows.length;
+  document.getElementById('ssTotalSalary').textContent = fmt(totalSalary);
+  document.getElementById('ssTotalBonus').textContent  = fmt(totalBonus);
+  document.getElementById('salarySummary').style.display = rows.length ? 'grid' : 'none';
+}
+
+function renderSalaryTable() {
+  const rows = salaryData[currentMonth] || [];
+  const tbody = document.getElementById('salaryBody');
+  tbody.innerHTML = '';
+  rows.forEach((row, i) => {
+    const { nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+    const bonusSum = nightPay + threshPay + kpi + dealBonus;
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f9fafb';
+    tr.innerHTML = `
+      <td style="padding:8px 12px;">
+        <input class="sal-input" style="text-align:left;min-width:180px;" value="${row.name}"
+          oninput="salaryData['${currentMonth}'][${i}].name=this.value;updateSalaryRow(${i})" placeholder="Имя" />
+      </td>
+      <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" value="${row.hours}"
+          oninput="salaryInput(${i},'hours',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" value="${row.rate}"
+          oninput="salaryInput(${i},'rate',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" value="${row.nights}"
+          oninput="salaryInput(${i},'nights',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" value="${row.thresholds}"
+          oninput="salaryInput(${i},'thresholds',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;">
+        <input class="sal-input" type="number" min="0" value="${row.kpi}"
+          oninput="salaryInput(${i},'kpi',this.value)" placeholder="0" />
+      </td>
+      <td style="padding:8px 12px;text-align:right;" id="sal-bonus-${i}" class="bonus">${fmt(bonusSum)}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:600;" id="sal-total-${i}">${fmt(total)}</td>
+      <td style="padding:8px 12px;">
+        <button onclick="removeSalaryRow(${i})" style="border:none;background:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  updateSalarySummary();
+}
+
+function syncSalaryFromDeals() {
+  if (!Object.keys(salaryData).length) initMonths();
+  rebuildMonthSelect();
+  renderSalaryTable();
+}
+
+// ── Excel export ──────────────────────────────────────────────────────────────
+function exportSalaryXLSX() {
+  const rows = salaryData[currentMonth] || [];
+  const label = monthLabel(currentMonth);
+
+  // Build CSV with BOM then trigger download as .csv (universal)
+  const header = ['Сотрудник','Часов','Ставка/час','Оклад','Ночных смен','Доплата за ночь','Порогов','Доплата за пороги','KPI','Доплата по сделкам','Итого ЗП'];
+  const dataRows = rows.map(row => {
+    const { base, nightPay, threshPay, kpi, dealBonus, total } = calcSalary(row);
+    return [
+      row.name,
+      row.hours || 0,
+      row.rate  || 0,
+      base.toFixed(2),
+      row.nights || 0,
+      nightPay.toFixed(2),
+      row.thresholds || 0,
+      threshPay.toFixed(2),
+      kpi.toFixed(2),
+      dealBonus.toFixed(2),
+      total.toFixed(2),
+    ];
+  });
+
+  // Total row
+  const totals = rows.reduce((acc, row) => {
+    const c = calcSalary(row);
+    acc.base      += c.base;
+    acc.nightPay  += c.nightPay;
+    acc.threshPay += c.threshPay;
+    acc.kpi       += c.kpi;
+    acc.dealBonus += c.dealBonus;
+    acc.total     += c.total;
+    return acc;
+  }, { base:0, nightPay:0, threshPay:0, kpi:0, dealBonus:0, total:0 });
+
+  dataRows.push(['ИТОГО','','', totals.base.toFixed(2),'', totals.nightPay.toFixed(2),'', totals.threshPay.toFixed(2), totals.kpi.toFixed(2), totals.dealBonus.toFixed(2), totals.total.toFixed(2)]);
+
+  const csv = '\uFEFF' + [header, ...dataRows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `ЗП_${currentMonth}.csv`;
+  a.click();
+}
+
+// Init on load
+window.addEventListener('DOMContentLoaded', () => { initMonths(); });
+</script>
+</body>
+</html>
