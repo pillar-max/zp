@@ -279,6 +279,15 @@
   }
   .sal-input:focus { border-color: #6366f1; }
   .sal-name { font-weight: 500; color: #1a1a2e; min-width: 140px; }
+  /* Fix transparent select dropdown */
+  select option {
+    background: #fff !important;
+    color: #1a1a2e !important;
+  }
+  select:focus {
+    background: #fff !important;
+    color: #1a1a2e !important;
+  }
 </style>
 </head>
 <body>
@@ -483,8 +492,7 @@
     <!-- Month bar -->
     <div class="webhook-bar" style="margin-bottom:16px; flex-wrap:wrap; gap:10px;">
       <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Месяц</label>
-      <select id="salaryMonth" onchange="onMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;flex:1;min-width:160px;">
-      </select>
+      <select id="salaryMonth" onchange="onMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;flex:1;min-width:160px;"></select>
       <button class="btn btn-secondary btn-small" onclick="addMonth()">+ Новый месяц</button>
       <button class="btn btn-secondary btn-small" onclick="deleteMonth()" style="color:#dc2626;">✕ Удалить месяц</button>
       <div style="flex:1"></div>
@@ -492,61 +500,109 @@
       <button class="btn btn-primary" onclick="exportSalaryXLSX()">↓ Скачать Excel</button>
     </div>
 
+    <!-- АВАНС (1–10) -->
     <div class="table-wrap" style="margin-bottom:20px;">
       <div class="table-header">
-        <h2 id="salaryMonthTitle">ЗП</h2>
+        <h2 id="salaryAdvanceTitle" style="color:#16a34a;">Аванс — 25-е (1–15 число)</h2>
         <button class="btn btn-secondary btn-small" onclick="addSalaryRow()">+ Сотрудник</button>
       </div>
-
       <div style="overflow-x:auto;">
-        <table id="salaryTable" style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;border-bottom:1px solid #f3f4f6;">
-              <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Часов</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Ставка/час (₽)</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Оклад</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Ночных смен</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Порогов</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Конверсия %</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Бонус конв.</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">KPI (₽)</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата сделки</th>
-              <th style="text-align:right;padding:10px 12px;font-weight:600;">Итого ЗП</th>
-              <th style="width:32px;"></th>
-            </tr>
-          </thead>
-          <tbody id="salaryBody"></tbody>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;border-bottom:1px solid #f3f4f6;">
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Должность</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Часов</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Ставка/час</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Оклад</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Ночных</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Порогов</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Конверсия %</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Бонус конв.</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">KPI</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;color:#16a34a;">Итого аванс</th>
+            <th style="width:32px;"></th>
+          </tr></thead>
+          <tbody id="salaryBodyAdvance"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="summary" id="salarySummaryAdvance" style="display:none;margin-bottom:24px;">
+      <div class="card"><div class="label">Сотрудников</div><div class="value" id="ssCountAdv">0</div></div>
+      <div class="card green"><div class="label">Фонд аванса</div><div class="value" id="ssTotalAdv">0 ₽</div></div>
+    </div>
+
+    <!-- ЗАРПЛАТА (11–конец) -->
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <div class="table-header">
+        <h2 id="salaryFinalTitle" style="color:#4f46e5;">Зарплата — 10-е (16–конец месяца)</h2>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;border-bottom:1px solid #f3f4f6;">
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Должность</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Часов</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Ставка/час</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Оклад</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Ночных</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Порогов</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Конверсия %</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Бонус конв.</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">KPI</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Доплата</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;color:#4f46e5;">Итого ЗП</th>
+            <th style="width:32px;"></th>
+          </tr></thead>
+          <tbody id="salaryBodyFinal"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="summary" id="salarySummaryFinal" style="display:none;margin-bottom:24px;">
+      <div class="card"><div class="label">Сотрудников</div><div class="value" id="ssCountFin">0</div></div>
+      <div class="card accent"><div class="label">Фонд ЗП</div><div class="value" id="ssTotalFin">0 ₽</div></div>
+    </div>
+
+    <!-- СВОДНАЯ ЗА МЕСЯЦ -->
+    <div class="table-wrap" id="salaryMonthSummary" style="display:none;margin-bottom:20px;">
+      <div class="table-header"><h2>Сводная за месяц</h2></div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;border-bottom:1px solid #f3f4f6;">
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Сотрудник</th>
+            <th style="text-align:left;padding:10px 12px;font-weight:600;">Должность</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">Аванс (25-е)</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;">ЗП (10-е)</th>
+            <th style="text-align:right;padding:10px 12px;font-weight:600;color:#1a1a2e;">Итого за месяц</th>
+          </tr></thead>
+          <tbody id="salaryMonthSummaryBody"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Salary summary cards -->
-    <div class="summary" id="salarySummary" style="display:none;">
-      <div class="card">
-        <div class="label">Сотрудников</div>
-        <div class="value" id="ssCount">0</div>
-      </div>
-      <div class="card green">
-        <div class="label">Фонд ЗП</div>
-        <div class="value" id="ssTotalSalary">0 ₽</div>
-      </div>
-      <div class="card accent">
-        <div class="label">Всего доплат</div>
-        <div class="value" id="ssTotalBonus">0 ₽</div>
-      </div>
-    </div>
-
-    <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +550 ₽ &nbsp;|&nbsp; Доплата из вкладки «Сделки» подтягивается автоматически если совпадает имя</p>
+    <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +550 ₽ &nbsp;|&nbsp; Часы подтягиваются из расписания автоматически</p>
   </div><!-- /tabSalary -->
 
   <!-- ══════════════════ ВКЛАДКА: СМЕНЫ ══════════════════ -->
   <div id="tabShifts" style="display:none;">
 
     <div class="webhook-bar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-      <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Месяц</label>
-      <select id="shiftMonth" onchange="onShiftMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;flex:1;min-width:160px;"></select>
-      <button class="btn btn-secondary btn-small" onclick="addShiftMonth()">+ Новый месяц</button>
+      <!-- View toggle -->
+      <div style="display:flex;gap:4px;background:#f3f4f6;border-radius:7px;padding:3px;">
+        <button id="btnViewMonth" onclick="setShiftView('month')" class="btn btn-small" style="background:#fff;color:#4f46e5;box-shadow:0 1px 3px rgba(0,0,0,0.1);">Месяц</button>
+        <button id="btnViewYear"  onclick="setShiftView('year')"  class="btn btn-small" style="background:transparent;color:#6b7280;">Год</button>
+      </div>
+      <!-- Month selector (hidden in year view) -->
+      <div id="shiftMonthBar" style="display:flex;gap:8px;align-items:center;flex:1;flex-wrap:wrap;">
+        <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Месяц</label>
+        <select id="shiftMonth" onchange="onShiftMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;min-width:160px;"></select>
+        <button class="btn btn-secondary btn-small" onclick="addShiftMonth()">+ Новый месяц</button>
+      </div>
+      <!-- Year selector (hidden in month view) -->
+      <div id="shiftYearBar" style="display:none;gap:8px;align-items:center;flex:1;flex-wrap:wrap;">
+        <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Год</label>
+        <select id="shiftYear" onchange="renderShiftsTable()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;min-width:100px;"></select>
+      </div>
       <div style="flex:1"></div>
       <button class="btn btn-secondary" onclick="pullNominalFromDeals()" title="Считает номинал из загруженных сделок по датам">⬇ Номинал из сделок</button>
       <button class="btn btn-secondary" onclick="saveShiftData()">💾 Сохранить</button>
@@ -1293,29 +1349,38 @@ function initMonths() {
     const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     salaryData[key] = DISPATCHERS_LIST.map(name => ({
       name,
+      position: name === 'Зубцов Сергей Андреевич' ? 'Руководитель' : name === 'Чирикин Александр' ? 'Стажер' : 'Диспетчер',
       hours: '',
       rate: name === 'Зубцов Сергей Андреевич' ? '' : '135',
-      nights: '',
-      thresholds: '',
-      conversion: '',
-      kpi: ''
+      nights: '', thresholds: '', conversion: '', kpi: '', manualSalary: '',
+      advHours: '', advNights: '', finHours: '', finNights: ''
     }));
   }
-  rebuildMonthSelect();
+  // Set currentMonth but don't render yet
+  if (!currentMonth || !salaryData[currentMonth]) {
+    currentMonth = Object.keys(salaryData).sort().reverse()[0];
+  }
 }
 
 function rebuildMonthSelect() {
   const sel = document.getElementById('salaryMonth');
+  if (!sel) return;
   const keys = Object.keys(salaryData).sort().reverse();
   sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
   if (!currentMonth || !salaryData[currentMonth]) currentMonth = keys[0];
   sel.value = currentMonth;
-  document.getElementById('salaryMonthTitle').textContent = 'ЗП — ' + monthLabel(currentMonth);
+  const titleEl = document.getElementById('salaryAdvanceTitle');
+  if (titleEl) titleEl.textContent = 'Аванс — 25-е (1–15 число) — ' + monthLabel(currentMonth);
+  const titleEl2 = document.getElementById('salaryFinalTitle');
+  if (titleEl2) titleEl2.textContent = 'Зарплата — 10-е (16–конец месяца) — ' + monthLabel(currentMonth);
 }
 
 function onMonthChange() {
   currentMonth = document.getElementById('salaryMonth').value;
-  document.getElementById('salaryMonthTitle').textContent = 'ЗП — ' + monthLabel(currentMonth);
+  const titleEl = document.getElementById('salaryAdvanceTitle');
+  if (titleEl) titleEl.textContent = 'Аванс — 25-е (1–15 число) — ' + monthLabel(currentMonth);
+  const titleEl2 = document.getElementById('salaryFinalTitle');
+  if (titleEl2) titleEl2.textContent = 'Зарплата — 10-е (16–конец месяца) — ' + monthLabel(currentMonth);
   renderSalaryTable();
 }
 
@@ -1325,8 +1390,10 @@ function addMonth() {
   const key = input.trim();
   if (!salaryData[key]) {
     salaryData[key] = DISPATCHERS_LIST.map(name => ({
-      name, hours: '', rate: name === 'Зубцов Сергей Андреевич' ? '' : '135',
-      nights: '', thresholds: '', conversion: '', kpi: ''
+      name,
+      position: name === 'Зубцов Сергей Андреевич' ? 'Руководитель' : name === 'Чирикин Александр' ? 'Стажер' : 'Диспетчер',
+      hours: '', rate: name === 'Зубцов Сергей Андреевич' ? '' : '135',
+      nights: '', thresholds: '', conversion: '', kpi: '', manualSalary: ''
     }));
   }
   currentMonth = key;
@@ -1362,7 +1429,7 @@ function saveSalaryData() {
 
 // ── Rows ──────────────────────────────────────────────────────────────────────
 function addSalaryRow() {
-  salaryData[currentMonth].push({ name:'', hours:'', rate:'', nights:'', thresholds:'', conversion:'', kpi:'' });
+  salaryData[currentMonth].push({ name:'', position:'Диспетчер', hours:'', rate:'135', nights:'', thresholds:'', conversion:'', kpi:'', manualSalary:'' });
   renderSalaryTable();
 }
 
@@ -1407,40 +1474,50 @@ function getDealBonus(name) {
   return total;
 }
 
-function calcSalary(row) {
-  const hours      = parseFloat(row.hours)      || 0;
+function calcSalary(row, period) {
+  const isZubtsov = row.name === 'Зубцов Сергей Андреевич';
+  let hours, nights;
+  if (period === 'advance') {
+    hours  = parseFloat(row.advHours)  || 0;
+    nights = parseFloat(row.advNights) || 0;
+  } else if (period === 'final') {
+    hours  = parseFloat(row.finHours)  || 0;
+    nights = parseFloat(row.finNights) || parseFloat(row.nights) || 0;
+  } else {
+    hours  = parseFloat(row.hours)  || 0;
+    nights = parseFloat(row.nights) || 0;
+  }
   const rate       = parseFloat(row.rate)       || 0;
-  const nights     = parseFloat(row.nights)     || 0;
   const thresholds = parseFloat(row.thresholds) || 0;
   const conversion = parseFloat(row.conversion) || 0;
   const kpi        = parseFloat(row.kpi)        || 0;
   const dealBonus  = getDealBonus(row.name);
-
-  const base        = hours * rate;
-  const nightPay    = nights * 300;
-  const threshPay   = thresholds * 550;
-
-  // Конверсионный бонус: 70%+ → 40% оклада, 60%+ → 30% оклада
+  const base       = isZubtsov ? (parseFloat(row.manualSalary) || 0) : hours * rate;
+  const nightPay   = nights * 300;
+  const threshPay  = thresholds * 550;
   let convBonus = 0;
   if (conversion >= 70)      convBonus = base * 0.40;
   else if (conversion >= 60) convBonus = base * 0.30;
-
   const total = base + nightPay + threshPay + convBonus + kpi + dealBonus;
-  return { base, nightPay, threshPay, convBonus, kpi, dealBonus, total };
+  return { base, nightPay, threshPay, convBonus, kpi, dealBonus, total, hours, nights };
 }
 
 function updateSalaryRow(i) {
   const row = (salaryData[currentMonth] || [])[i];
   if (!row) return;
-  const { base, nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
+  const { base, convBonus, dealBonus, total, advance, final } = calcSalaryTotal(row);
   const convPct   = parseFloat(row.conversion) || 0;
   const convLabel = convPct >= 70 ? '40% окл.' : convPct >= 60 ? '30% окл.' : '—';
   const convEl    = document.getElementById(`sal-conv-${i}`);
   const bonusEl   = document.getElementById(`sal-bonus-${i}`);
   const totalEl   = document.getElementById(`sal-total-${i}`);
-  if (convEl)  convEl.innerHTML  = convBonus > 0 ? fmt(convBonus) + `<br><span style="font-size:10px">${convLabel}</span>` : '—';
+  const advEl     = document.getElementById(`sal-advance-${i}`);
+  const finEl     = document.getElementById(`sal-final-${i}`);
+  if (convEl)  convEl.innerHTML   = convBonus > 0 ? fmt(convBonus) + '<br><span style="font-size:10px">' + convLabel + '</span>' : '—';
   if (bonusEl) bonusEl.textContent = fmt(dealBonus);
   if (totalEl) totalEl.textContent = fmt(total);
+  if (advEl)   advEl.textContent   = fmt(advance);
+  if (finEl)   finEl.textContent   = fmt(final);
   updateSalarySummary();
 }
 
@@ -1458,59 +1535,131 @@ function updateSalarySummary() {
   document.getElementById('salarySummary').style.display = rows.length ? 'grid' : 'none';
 }
 
+function calcSalaryTotal(row) {
+  const adv = calcSalary(row, 'advance');
+  const fin = calcSalary(row, 'final');
+  return { advance: adv.total, final: fin.total, total: adv.total + fin.total };
+}
+
+function updateSalarySummary() {
+  // no-op: handled in renderSalaryTable
+}
+
+function buildSalaryRow(row, i, period, accentColor) {
+  const isZubtsov = row.name === 'Зубцов Сергей Андреевич';
+  const c = calcSalary(row, period);
+  const convPct   = parseFloat(row.conversion) || 0;
+  const convLabel = convPct >= 70 ? '40%' : convPct >= 60 ? '30%' : '—';
+  const pos       = row.position || 'Диспетчер';
+  const POSITIONS = ['Диспетчер','Стажер','Руководитель','Оператор ДЦ'];
+  const posOpts   = POSITIONS.map(p => '<option value="' + p + '"' + (p===pos?' selected':'') + '>' + p + '</option>').join('');
+  const pid = period + '_' + i;
+  return `<tr style="border-bottom:1px solid #f9fafb;">
+    <td style="padding:6px 8px;">
+      <input class="sal-input" style="text-align:left;min-width:150px;" value="${row.name}"
+        oninput="salaryData['${currentMonth}'][${i}].name=this.value" placeholder="Имя" />
+    </td>
+    <td style="padding:6px 8px;">
+      <select class="sal-input" style="text-align:left;" onchange="salaryInput(${i},'position',this.value)">${posOpts}</select>
+    </td>
+    ${isZubtsov ? `<td style="padding:6px 8px;" colspan="3">
+      <input class="sal-input" type="number" min="0" value="${row.manualSalary||''}"
+        oninput="salaryInput(${i},'manualSalary',this.value)" placeholder="Оклад вручную" />
+    </td>` : `
+    <td style="padding:6px 8px;text-align:right;color:#6b7280;">${c.hours}</td>
+    <td style="padding:6px 8px;"><input class="sal-input" type="number" min="0" value="${row.rate}" oninput="salaryInput(${i},'rate',this.value)" placeholder="135" /></td>
+    <td style="padding:6px 8px;text-align:right;color:#6b7280;font-size:12px;">${fmt(c.base)}</td>`}
+    <td style="padding:6px 8px;text-align:right;color:#6b7280;">${c.nights||'—'}</td>
+    <td style="padding:6px 8px;"><input class="sal-input" type="number" min="0" value="${row.thresholds}" oninput="salaryInput(${i},'thresholds',this.value)" placeholder="0" /></td>
+    <td style="padding:6px 8px;"><input class="sal-input" type="number" min="0" max="100" value="${row.conversion}" oninput="salaryInput(${i},'conversion',this.value)" placeholder="0" /></td>
+    <td style="padding:6px 8px;text-align:right;font-size:12px;color:#6b7280;">${c.convBonus > 0 ? fmt(c.convBonus) + '<br><small>' + convLabel + '</small>' : '—'}</td>
+    <td style="padding:6px 8px;"><input class="sal-input" type="number" min="0" value="${row.kpi}" oninput="salaryInput(${i},'kpi',this.value)" placeholder="0" /></td>
+    <td style="padding:6px 8px;text-align:right;color:#4f46e5;">${fmt(c.dealBonus)}</td>
+    <td style="padding:6px 8px;text-align:right;font-weight:700;color:${accentColor};">${fmt(c.total)}</td>
+    <td style="padding:6px 8px;">
+      <button onclick="removeSalaryRow(${i})" style="border:none;background:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
+    </td>
+  </tr>`;
+}
+
 function renderSalaryTable() {
   const rows = salaryData[currentMonth] || [];
-  const tbody = document.getElementById('salaryBody');
-  tbody.innerHTML = '';
+
+  // Sync shifts if schedule data exists for this month
+  if (shiftData[currentMonth]) {
+    SCHEDULE_EMPLOYEES.forEach(({ name }) => syncShiftToSalary(name));
+  }
+
+  const tbodyAdv = document.getElementById('salaryBodyAdvance');
+  const tbodyFin = document.getElementById('salaryBodyFinal');
+  if (!tbodyAdv || !tbodyFin) return;
+
+  tbodyAdv.innerHTML = '';
+  tbodyFin.innerHTML = '';
+
+  let totalAdv = 0, totalFin = 0;
+  const monthRows = [];
+
   rows.forEach((row, i) => {
-    const { base, nightPay, threshPay, convBonus, kpi, dealBonus, total } = calcSalary(row);
-    const convPct = parseFloat(row.conversion) || 0;
-    const convLabel = convPct >= 70 ? '40% окл.' : convPct >= 60 ? '30% окл.' : '—';
-    const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid #f9fafb';
-    tr.innerHTML = `
-      <td style="padding:8px 12px;">
-        <input class="sal-input" style="text-align:left;min-width:180px;" value="${row.name}"
-          oninput="salaryData['${currentMonth}'][${i}].name=this.value;updateSalaryRow(${i})" placeholder="Имя" />
-      </td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" value="${row.hours}"
-          oninput="salaryInput(${i},'hours',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" value="${row.rate}"
-          oninput="salaryInput(${i},'rate',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;text-align:right;color:#6b7280;font-size:13px;">${fmt(base)}</td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" value="${row.nights}"
-          oninput="salaryInput(${i},'nights',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" value="${row.thresholds}"
-          oninput="salaryInput(${i},'thresholds',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" max="100" value="${row.conversion}"
-          oninput="salaryInput(${i},'conversion',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;text-align:right;font-size:12px;color:#6b7280;" id="sal-conv-${i}">${convBonus > 0 ? fmt(convBonus) + '<br><span style="font-size:10px">' + convLabel + '</span>' : '—'}</td>
-      <td style="padding:8px 12px;">
-        <input class="sal-input" type="number" min="0" value="${row.kpi}"
-          oninput="salaryInput(${i},'kpi',this.value)" placeholder="0" />
-      </td>
-      <td style="padding:8px 12px;text-align:right;" id="sal-bonus-${i}" class="bonus">${fmt(dealBonus)}</td>
-      <td style="padding:8px 12px;text-align:right;font-weight:600;" id="sal-total-${i}">${fmt(total)}</td>
-      <td style="padding:8px 12px;">
-        <button onclick="removeSalaryRow(${i})" style="border:none;background:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
-      </td>`;
-    tbody.appendChild(tr);
+    const adv = calcSalary(row, 'advance');
+    const fin = calcSalary(row, 'final');
+    totalAdv += adv.total;
+    totalFin += fin.total;
+    monthRows.push({ name: row.name, pos: row.position || 'Диспетчер', adv: adv.total, fin: fin.total });
+
+    tbodyAdv.insertAdjacentHTML('beforeend', buildSalaryRow(row, i, 'advance', '#16a34a'));
+    tbodyFin.insertAdjacentHTML('beforeend', buildSalaryRow(row, i, 'final',   '#4f46e5'));
   });
-  updateSalarySummary();
+
+  // Summary advance
+  const sadv = document.getElementById('salarySummaryAdvance');
+  if (sadv) {
+    document.getElementById('ssCountAdv').textContent = rows.length;
+    document.getElementById('ssTotalAdv').textContent = fmt(totalAdv);
+    sadv.style.display = rows.length ? 'grid' : 'none';
+  }
+  // Summary final
+  const sfin = document.getElementById('salarySummaryFinal');
+  if (sfin) {
+    document.getElementById('ssCountFin').textContent = rows.length;
+    document.getElementById('ssTotalFin').textContent = fmt(totalFin);
+    sfin.style.display = rows.length ? 'grid' : 'none';
+  }
+
+  // Monthly summary table
+  const msum = document.getElementById('salaryMonthSummary');
+  const mbody = document.getElementById('salaryMonthSummaryBody');
+  if (msum && mbody && rows.length) {
+    mbody.innerHTML = monthRows.map(r => `<tr style="border-top:1px solid #f3f4f6;">
+      <td style="padding:10px 12px;font-weight:500;">${r.name}</td>
+      <td style="padding:10px 12px;color:#6b7280;font-size:12px;">${r.pos}</td>
+      <td style="padding:10px 12px;text-align:right;color:#16a34a;font-weight:500;">${fmt(r.adv)}</td>
+      <td style="padding:10px 12px;text-align:right;color:#4f46e5;font-weight:500;">${fmt(r.fin)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;">${fmt(r.adv + r.fin)}</td>
+    </tr>`).join('') + `<tr style="border-top:2px solid #e5e7eb;background:#fafafa;font-weight:700;">
+      <td style="padding:10px 12px;" colspan="2">Итого</td>
+      <td style="padding:10px 12px;text-align:right;color:#16a34a;">${fmt(totalAdv)}</td>
+      <td style="padding:10px 12px;text-align:right;color:#4f46e5;">${fmt(totalFin)}</td>
+      <td style="padding:10px 12px;text-align:right;">${fmt(totalAdv + totalFin)}</td>
+    </tr>`;
+    msum.style.display = 'block';
+  }
 }
 
 function syncSalaryFromDeals() {
   if (!Object.keys(salaryData).length) initMonths();
+  // Migrate old rows missing new fields
+  Object.values(salaryData).forEach(monthRows => {
+    if (!Array.isArray(monthRows)) return;
+    monthRows.forEach(row => {
+      if (row.position === undefined) row.position = row.name === 'Зубцов Сергей Андреевич' ? 'Руководитель' : row.name === 'Чирикин Александр' ? 'Стажер' : 'Диспетчер';
+      if (row.manualSalary === undefined) row.manualSalary = '';
+      if (row.advHours === undefined) row.advHours = '';
+      if (row.finHours === undefined) row.finHours = '';
+      if (row.advNights === undefined) row.advNights = '';
+      if (row.finNights === undefined) row.finNights = '';
+    });
+  });
   rebuildMonthSelect();
   renderSalaryTable();
 }
@@ -1626,6 +1775,53 @@ const SCHED_TO_USERS = {
   'Сережа Зубцов':     'Зубцов Сергей Андреевич',
 };
 
+// ── Drag-to-fill for schedule ──────────────────────────────────────────────
+let shiftViewMode = 'month'; // 'month' or 'year'
+
+function setShiftView(mode) {
+  shiftViewMode = mode;
+  document.getElementById('btnViewMonth').style.background = mode === 'month' ? '#fff' : 'transparent';
+  document.getElementById('btnViewMonth').style.color      = mode === 'month' ? '#4f46e5' : '#6b7280';
+  document.getElementById('btnViewMonth').style.boxShadow = mode === 'month' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+  document.getElementById('btnViewYear').style.background  = mode === 'year'  ? '#fff' : 'transparent';
+  document.getElementById('btnViewYear').style.color       = mode === 'year'  ? '#4f46e5' : '#6b7280';
+  document.getElementById('btnViewYear').style.boxShadow  = mode === 'year'  ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+  document.getElementById('shiftMonthBar').style.display  = mode === 'month' ? 'flex' : 'none';
+  document.getElementById('shiftYearBar').style.display   = mode === 'year'  ? 'flex' : 'none';
+
+  if (mode === 'year') rebuildYearSelect();
+  renderShiftsTable();
+}
+
+function rebuildYearSelect() {
+  const sel = document.getElementById('shiftYear');
+  if (!sel) return;
+  // Collect all years from existing months + current year
+  const years = new Set();
+  Object.keys(shiftData).forEach(k => years.add(k.slice(0,4)));
+  years.add(String(new Date().getFullYear()));
+  const sorted = [...years].sort().reverse();
+  sel.innerHTML = sorted.map(y => `<option value="${y}">${y}</option>`).join('');
+}
+
+function getSelectedYear() {
+  const sel = document.getElementById('shiftYear');
+  return sel ? sel.value : String(new Date().getFullYear());
+}
+
+// Ensure all 12 months exist in shiftData for a given year
+function ensureYearMonths(year) {
+  for (let m = 1; m <= 12; m++) {
+    const key = `${year}-${String(m).padStart(2,'0')}`;
+    if (!shiftData[key]) shiftData[key] = { schedule: {}, thresholds: {} };
+  }
+}
+let dragFillActive = false;
+let dragFillValue  = '';
+let dragFillMonth  = '';
+
+document.addEventListener('mouseup', () => { dragFillActive = false; });
+
 function getDaysInMonth(key) {
   const [y, m] = key.split('-').map(Number);
   const days = [];
@@ -1651,12 +1847,13 @@ function initShiftData() {
 }
 
 function rebuildShiftMonthSelect() {
-  const sel  = document.getElementById('shiftMonth');
+  const sel = document.getElementById('shiftMonth');
   const keys = Object.keys(shiftData).sort().reverse();
   sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
   if (!currentShiftMonth || !shiftData[currentShiftMonth]) currentShiftMonth = keys[0];
   sel.value = currentShiftMonth;
   document.getElementById('shiftMonthTitle').textContent = 'Расписание — ' + monthLabel(currentShiftMonth);
+  rebuildYearSelect();
 }
 
 function onShiftMonthChange() {
@@ -1688,7 +1885,39 @@ function saveShiftData() {
 function setShift(emp, dateStr, val) {
   if (!shiftData[currentShiftMonth].schedule[emp]) shiftData[currentShiftMonth].schedule[emp] = {};
   shiftData[currentShiftMonth].schedule[emp][dateStr] = val;
+  syncShiftToSalary(emp);
   renderShiftsTable();
+}
+
+// Sync hours + nights from schedule → salary for one employee (split by period)
+function syncShiftToSalary(emp) {
+  const salaryMonth = currentShiftMonth;
+  if (!salaryData[salaryMonth]) return;
+
+  const sched = (shiftData[currentShiftMonth].schedule[emp] || {});
+  const days  = getDaysInMonth(currentShiftMonth);
+
+  let advHours = 0, advNights = 0;
+  let finHours = 0, finNights = 0;
+
+  days.forEach(d => {
+    const ds  = d.toISOString().slice(0,10);
+    const day = d.getDate();
+    const s   = sched[ds] || '';
+    const h   = SHIFT_HOURS[s]       || 0;
+    const n   = SHIFT_NIGHT_COUNT[s] || 0;
+    if (day <= 15) { advHours += h; advNights += n; }
+    else           { finHours += h; finNights += n; }
+  });
+
+  const salaryName = SCHED_TO_USERS[emp] || emp;
+  const row = salaryData[salaryMonth].find(r => r.name === salaryName);
+  if (row) {
+    row.advHours  = advHours  > 0 ? String(advHours)  : '';
+    row.advNights = advNights > 0 ? String(advNights) : '';
+    row.finHours  = finHours  > 0 ? String(finHours)  : '';
+    row.finNights = finNights > 0 ? String(finNights) : '';
+  }
 }
 
 function setThreshold(dateStr, field, val) {
@@ -1699,6 +1928,16 @@ function setThreshold(dateStr, field, val) {
 
 function renderShiftsTable() {
   if (!Object.keys(shiftData).length) initShiftData();
+
+  // Sync all employees to salary
+  SCHEDULE_EMPLOYEES.forEach(({ name }) => syncShiftToSalary(name));
+
+  if (shiftViewMode === 'year') {
+    renderYearView();
+    return;
+  }
+
+  // Month view (existing logic below)
   const data  = shiftData[currentShiftMonth] || { schedule: {}, thresholds: {} };
   const days  = getDaysInMonth(currentShiftMonth);
   const wrap  = document.getElementById('scheduleWrap');
@@ -1787,9 +2026,15 @@ function renderShiftsTable() {
       const s   = sched[ds] || '';
       const clr = SHIFT_COLORS[s] || SHIFT_COLORS[''];
       const opts = SHIFT_TYPES.map(t => '<option value="' + t + '"' + (t===s?' selected':'') + '>' + (t||'—') + '</option>').join('');
-      html += '<td style="padding:1px 2px;border:1px solid #e5e7eb;text-align:center;background:' + clr.bg + ';">'
-        + '<select onchange="setShift(\'' + name + '\',\'' + ds + '\',this.value)"'
-        + ' style="font-size:10px;border:none;background:transparent;width:100%;text-align:center;cursor:pointer;outline:none;color:' + clr.text + ';font-weight:' + (s&&s!=='вых'&&s!=='отпуск'?'600':'400') + ';">'
+      // Drag handle (▣) + normal select
+      html += '<td style="padding:0;border:1px solid #e5e7eb;background:' + clr.bg + ';white-space:nowrap;">'
+        + '<span onmousedown="event.preventDefault();startDragFill(\'' + name + '\',\'' + ds + '\',document.querySelector(\'#sel_' + name.replace(/[\s']/g,'_') + '_' + ds + '\').value)" '
+        + 'onmouseover="continueDragFill(\'' + name + '\',\'' + ds + '\')" '
+        + 'style="cursor:crosshair;padding:2px 3px;color:' + clr.text + ';opacity:0.4;font-size:9px;display:inline-block;vertical-align:middle;" '
+        + 'title="Зажмите и тяните для заполнения">⠿</span>'
+        + '<select id="sel_' + name.replace(/[\s']/g,'_') + '_' + ds + '"'
+        + ' onchange="setShift(\'' + name + '\',\'' + ds + '\',this.value)"'
+        + ' style="font-size:11px;border:none;background:transparent;text-align:center;cursor:pointer;outline:none;color:' + clr.text + ';font-weight:' + (s&&s!=='вых'&&s!=='отпуск'?'600':'400') + ';max-width:85px;">'
         + '<option value="">—</option>' + opts
         + '</select></td>';
     });
@@ -1973,6 +2218,126 @@ function showNominalBreakdown(breakdownByDay) {
   document.body.appendChild(overlay);
 }
 
+function renderYearView() {
+  const year = getSelectedYear();
+  ensureYearMonths(year);
+  const wrap = document.getElementById('scheduleWrap');
+
+  let html = '';
+
+  for (let mo = 1; mo <= 12; mo++) {
+    const key  = `${year}-${String(mo).padStart(2,'0')}`;
+    const data = shiftData[key] || { schedule: {}, thresholds: {} };
+    const days = getDaysInMonth(key);
+
+    // Month header
+    html += `<div style="margin-bottom:4px;padding:8px 12px;background:#eef2ff;border-radius:8px 8px 0 0;font-weight:600;color:#4f46e5;font-size:14px;">${monthLabel(key)}</div>`;
+    html += `<div style="overflow-x:auto;margin-bottom:20px;">`;
+    html += `<table style="border-collapse:collapse;font-size:11px;min-width:100%;">`;
+
+    // Header row
+    html += `<thead><tr>`;
+    html += `<th style="text-align:left;padding:5px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;min-width:120px;position:sticky;left:0;z-index:1;">Сотрудник</th>`;
+    html += `<th style="text-align:left;padding:5px 6px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;font-size:10px;color:#6b7280;">Должность</th>`;
+    days.forEach(d => {
+      const dn   = DAY_NAMES[d.getDay()];
+      const isWE = d.getDay() === 0 || d.getDay() === 6;
+      const bg   = isWE ? '#fef2f2' : '#f9fafb';
+      html += `<th style="text-align:center;padding:3px 2px;background:${bg};border:1px solid #e5e7eb;min-width:64px;">`;
+      html += `<div style="font-weight:600;color:${isWE?'#dc2626':'#374151'};font-size:10px;">${dn}</div>`;
+      html += `<div style="font-size:9px;color:#6b7280;">${d.getDate()}</div></th>`;
+    });
+    html += `<th style="text-align:right;padding:5px 6px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;">Ч</th>`;
+    html += `<th style="text-align:right;padding:5px 6px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;color:#4f46e5;">Доп.</th>`;
+    html += `</tr></thead><tbody>`;
+
+    let totalBonus = 0;
+
+    SCHEDULE_EMPLOYEES.forEach(({ name, pos }) => {
+      const sched = data.schedule[name] || {};
+      let hours = 0, bonus = 0;
+
+      html += `<tr>`;
+      html += `<td style="padding:3px 8px;border:1px solid #e5e7eb;font-weight:500;white-space:nowrap;background:#fafafa;position:sticky;left:0;z-index:1;">${name.split(' ')[0]}</td>`;
+      const posColor = pos === 'Руководитель' ? '#7c3aed' : pos === 'Стажер' ? '#d97706' : '#9ca3af';
+      html += `<td style="padding:3px 6px;border:1px solid #e5e7eb;font-size:9px;color:${posColor};background:#fafafa;">${pos}</td>`;
+
+      days.forEach(d => {
+        const ds  = d.toISOString().slice(0,10);
+        const s   = sched[ds] || '';
+        const clr = SHIFT_COLORS[s] || SHIFT_COLORS[''];
+        hours += SHIFT_HOURS[s] || 0;
+
+        // Calc bonus for this day
+        const thr = data.thresholds[ds] || {};
+        const threshold = (parseFloat(thr.carsDay)||0)*THRESHOLD_DAY + (parseFloat(thr.carsNight)||0)*THRESHOLD_NIGHT;
+        const steps = calcShiftBonus(parseFloat(thr.nominal)||0, threshold);
+        const works = name === MANAGER_NAME ? steps > 0 : (SHIFT_WORKS(s) && steps > 0);
+        if (works) bonus += steps * SHIFT_BONUS_PER;
+
+        const opts = SHIFT_TYPES.map(t => '<option value="' + t + '"' + (t===s?' selected':'') + '>' + (t||'—') + '</option>').join('');
+        const safeId = 'yr_' + key + '_' + name.replace(/[\s']/g,'_') + '_' + ds;
+        html += '<td style="padding:0;border:1px solid #e5e7eb;background:' + clr.bg + ';white-space:nowrap;">'
+          + '<span onmousedown="event.preventDefault();startDragFill(\'' + name + '\',\'' + ds + '\',document.querySelector(\'#' + safeId + '\').value,\'' + key + '\')" '
+          + 'onmouseover="continueDragFill(\'' + name + '\',\'' + ds + '\',\'' + key + '\')" '
+          + 'style="cursor:crosshair;padding:1px 2px;color:' + clr.text + ';opacity:0.4;font-size:8px;">⠿</span>'
+          + '<select id="' + safeId + '" onchange="setShiftInMonth(\'' + name + '\',\'' + ds + '\',this.value,\'' + key + '\')"'
+          + ' style="font-size:10px;border:none;background:transparent;text-align:center;cursor:pointer;outline:none;color:' + clr.text + ';font-weight:' + (s&&s!=='вых'&&s!=='отпуск'?'600':'400') + ';max-width:72px;">'
+          + '<option value="">—</option>' + opts + '</select></td>';
+      });
+
+      totalBonus += bonus;
+      html += `<td style="padding:3px 6px;border:1px solid #e5e7eb;text-align:right;font-weight:600;">${hours}</td>`;
+      html += `<td style="padding:3px 6px;border:1px solid #e5e7eb;text-align:right;color:#4f46e5;font-weight:600;">${bonus > 0 ? fmt(bonus) : '—'}</td>`;
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+  }
+
+  wrap.innerHTML = html;
+
+  // Hide summary cards in year view
+  document.getElementById('shiftSummary').style.display = 'none';
+  document.getElementById('shiftEmpSummary').style.display = 'none';
+}
+
+// setShift variant for year view that specifies the month key
+function setShiftInMonth(emp, dateStr, val, monthKey) {
+  if (!shiftData[monthKey]) shiftData[monthKey] = { schedule: {}, thresholds: {} };
+  if (!shiftData[monthKey].schedule[emp]) shiftData[monthKey].schedule[emp] = {};
+  shiftData[monthKey].schedule[emp][dateStr] = val;
+  // Re-render only the changed cell background
+  const safeId = 'yr_' + monthKey + '_' + emp.replace(/[\s']/g,'_') + '_' + dateStr;
+  const sel = document.getElementById(safeId);
+  if (sel) {
+    const clr = SHIFT_COLORS[val] || SHIFT_COLORS[''];
+    sel.closest('td').style.background = clr.bg;
+    sel.style.color = clr.text;
+    sel.style.fontWeight = (val && val !== 'вых' && val !== 'отпуск') ? '600' : '400';
+  }
+  // Sync to salary for the relevant month
+  const prevMonth = currentShiftMonth;
+  currentShiftMonth = monthKey;
+  syncShiftToSalary(emp);
+  currentShiftMonth = prevMonth;
+}
+
+// Update drag fill to support year view month key
+function startDragFill(emp, ds, val, monthKey) {
+  dragFillActive = true;
+  dragFillValue  = val;
+  dragFillMonth  = monthKey || currentShiftMonth;
+  if (monthKey) setShiftInMonth(emp, ds, val, monthKey);
+  else setShift(emp, ds, val);
+}
+
+function continueDragFill(emp, ds, monthKey) {
+  if (!dragFillActive) return;
+  if (monthKey) setShiftInMonth(emp, ds, dragFillValue, monthKey);
+  else setShift(emp, ds, dragFillValue);
+}
+
 function exportShiftsXLSX() {
   const data = shiftData[currentShiftMonth] || { schedule: {}, thresholds: {} };
   const days = getDaysInMonth(currentShiftMonth);
@@ -2024,8 +2389,19 @@ function exportShiftsXLSX() {
   XLSX.writeFile(wb, `Смены_${currentShiftMonth}.xlsx`);
 }
 
-// Init shifts on load
-window.addEventListener('DOMContentLoaded', () => { initMonths(); initShiftData(); });
+// Init on load — only init data, render happens when tab is opened
+window.addEventListener('DOMContentLoaded', () => {
+  initMonths();
+  initShiftData();
+  // Pre-set currentMonth select value without rendering table
+  const sel = document.getElementById('salaryMonth');
+  if (sel) {
+    const keys = Object.keys(salaryData).sort().reverse();
+    sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
+    if (!currentMonth || !salaryData[currentMonth]) currentMonth = keys[0];
+    sel.value = currentMonth;
+  }
+});
 </script>
 </body>
 </html>
