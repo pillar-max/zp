@@ -1924,6 +1924,7 @@ function pullNominalFromDeals() {
   alert(`Номинал обновлён за ${updated} ${updated === 1 ? 'день' : updated < 5 ? 'дня' : 'дней'}`);
 }
 
+function exportShiftsXLSX() {
   const data = shiftData[currentShiftMonth] || { schedule: {}, thresholds: {} };
   const days = getDaysInMonth(currentShiftMonth);
   const wb   = XLSX.utils.book_new();
