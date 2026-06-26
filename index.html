@@ -291,6 +291,8 @@
   <nav class="tabs">
     <button class="tab active" onclick="switchTab('deals')">Сделки и доплаты</button>
     <button class="tab" onclick="switchTab('salary')">Расчёт ЗП</button>
+    <button class="tab" onclick="switchTab('shifts')">Смены</button>
+    <button class="tab" onclick="switchTab('rules')">Справка</button>
   </nav>
 </header>
 
@@ -405,6 +407,14 @@
     <div class="filter-group">
       <label>Дата завершения до</label>
       <input type="date" id="fDateTo" />
+    </div>
+    <div class="filter-group">
+      <label>Время окончания от</label>
+      <input type="time" id="fTimeFrom" style="width:100%;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:14px;background:#fff;outline:none;" />
+    </div>
+    <div class="filter-group">
+      <label>Время окончания до</label>
+      <input type="time" id="fTimeTo" style="width:100%;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:14px;background:#fff;outline:none;" />
     </div>
     <div class="filter-group actions">
       <button class="btn btn-primary" id="btnLoad" onclick="loadDeals()">
@@ -525,6 +535,120 @@
     <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +300 ₽ &nbsp;|&nbsp; Доплата из вкладки «Сделки» подтягивается автоматически если совпадает имя</p>
   </div><!-- /tabSalary -->
 
+  <!-- ══════════════════ ВКЛАДКА: СМЕНЫ ══════════════════ -->
+  <div id="tabShifts" style="display:none;">
+
+    <div class="webhook-bar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <label style="font-size:13px;font-weight:500;color:#6b7280;white-space:nowrap;">Месяц</label>
+      <select id="shiftMonth" onchange="onShiftMonthChange()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;flex:1;min-width:160px;"></select>
+      <button class="btn btn-secondary btn-small" onclick="addShiftMonth()">+ Новый месяц</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="pullNominalFromDeals()" title="Считает номинал из загруженных сделок по датам">⬇ Номинал из сделок</button>
+      <button class="btn btn-secondary" onclick="saveShiftData()">💾 Сохранить</button>
+      <button class="btn btn-primary" onclick="exportShiftsXLSX()">↓ Скачать Excel</button>
+    </div>
+
+    <!-- Schedule grid -->
+    <div class="table-wrap" style="margin-bottom:16px;">
+      <div class="table-header">
+        <h2 id="shiftMonthTitle">Расписание смен</h2>
+      </div>
+      <div style="overflow-x:auto;" id="scheduleWrap"></div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary" id="shiftSummary" style="display:none;">
+      <div class="card"><div class="label">Всего смен</div><div class="value" id="shiftTotalShifts">0</div></div>
+      <div class="card"><div class="label">Ночных смен</div><div class="value" id="shiftTotalNight">0</div></div>
+      <div class="card green"><div class="label">Дней порог выполнен</div><div class="value" id="shiftDaysOk">0</div></div>
+      <div class="card accent"><div class="label">Итого доплат за смены</div><div class="value" id="shiftTotalBonus">0 ₽</div></div>
+    </div>
+
+    <!-- Per-employee summary -->
+    <div class="table-wrap" id="shiftEmpSummary" style="display:none;margin-top:16px;">
+      <div class="table-header"><h2>Итоги по сотрудникам</h2></div>
+      <div id="shiftEmpSummaryBody"></div>
+    </div>
+
+    <p class="footer-note">
+      8-16 / 16-00 / 00-08 / 7-15 = 8ч &nbsp;|&nbsp; 9-21 = 12ч &nbsp;|&nbsp;
+      8-16+16-00 / 16-00+00-08 = 16ч (2 смены) &nbsp;|&nbsp;
+      Ночь: 00-08, 16-00+00-08 &nbsp;|&nbsp;
+      Порог: 30 000 ₽/машина днём, 15 000 ₽/машина ночью → 550 ₽ каждому работавшему
+    </p>
+  </div><!-- /tabShifts -->
+
+  <!-- ══════════════════ ВКЛАДКА: СПРАВКА ══════════════════ -->
+  <div id="tabRules" style="display:none;">
+
+    <div class="table-wrap" style="margin-bottom:16px;">
+      <div class="table-header"><h2>Доплаты диспетчеров по сделкам</h2></div>
+      <div style="padding:20px;font-size:14px;line-height:1.8;color:#374151;">
+        <p style="margin-bottom:12px;">Доплата считается от доли компании в сделке. Доля зависит от партнёра:</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;">
+          <thead><tr style="background:#f9fafb;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Партнёр</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Доля компании</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Доплата диспетчеру</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Итого от сделки</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">ТП</td><td style="padding:8px 12px;">20% от суммы сделки</td><td style="padding:8px 12px;">10% от доли компании</td><td style="padding:8px 12px;font-weight:500;color:#4f46e5;">2% от сделки</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Выездной шиномонтаж</td><td style="padding:8px 12px;">15% от суммы сделки</td><td style="padding:8px 12px;">10% от доли компании</td><td style="padding:8px 12px;font-weight:500;color:#4f46e5;">1.5% от сделки</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Лоджик / А24 / КарТакси / Подрядный эвакуатор</td><td style="padding:8px 12px;">Сумма сделки − Стоимость у партнёра<br><span style="color:#6b7280;font-size:12px;">или КВ партнёра, если заполнено</span></td><td style="padding:8px 12px;">10% от доли компании</td><td style="padding:8px 12px;font-weight:500;color:#4f46e5;">10% от разницы или КВ</td></tr>
+          </tbody>
+        </table>
+        <p style="color:#6b7280;font-size:13px;">Сделки без заполненного поля «Водитель/Механик» в расчёт не попадают.</p>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:16px;">
+      <div class="table-header"><h2>Номинал сделки</h2></div>
+      <div style="padding:20px;font-size:14px;line-height:1.8;color:#374151;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#f9fafb;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Тип клиента</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Услуга</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Водитель</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Номинал</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Разовый</td><td style="padding:8px 12px;">Любая</td><td style="padding:8px 12px;">Не «Партнер»</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">Сумма сделки</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Разовый</td><td style="padding:8px 12px;">Любая</td><td style="padding:8px 12px;">«Партнер»</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">Доля компании (% или разница)</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Клубный</td><td style="padding:8px 12px;">Техпомощь</td><td style="padding:8px 12px;">Любой</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">2 500 ₽ + сумма сделки</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Клубный</td><td style="padding:8px 12px;">Эвакуация</td><td style="padding:8px 12px;">Любой</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">4 500 ₽ + сумма сделки</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Корпоративный</td><td style="padding:8px 12px;">Техпомощь</td><td style="padding:8px 12px;">Любой</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">2 500 ₽</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Корпоративный</td><td style="padding:8px 12px;">Эвакуация</td><td style="padding:8px 12px;">Любой</td><td style="padding:8px 12px;font-weight:500;color:#7c3aed;">4 500 ₽</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:16px;">
+      <div class="table-header"><h2>Расчёт заработной платы</h2></div>
+      <div style="padding:20px;font-size:14px;line-height:1.8;color:#374151;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;">
+          <thead><tr style="background:#f9fafb;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Составляющая</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Формула</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;">Примечание</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Оклад</td><td style="padding:8px 12px;">Часов × Ставка/час</td><td style="padding:8px 12px;color:#6b7280;">Ставка по умолчанию 135 ₽/час (кроме Зубцова)</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Ночные смены</td><td style="padding:8px 12px;">Кол-во смен × 300 ₽</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Пороги</td><td style="padding:8px 12px;">Кол-во порогов × 300 ₽</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Бонус конверсии</td><td style="padding:8px 12px;">60–69% → +30% оклада<br>70%+ → +40% оклада</td><td style="padding:8px 12px;color:#6b7280;">Конверсия вводится вручную из BI</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">KPI</td><td style="padding:8px 12px;">Сумма вручную</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Доплата по сделкам</td><td style="padding:8px 12px;">Авто из вкладки «Сделки»</td><td style="padding:8px 12px;color:#6b7280;">Только сделки за выбранный месяц</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;background:#f0fdf4;"><td style="padding:8px 12px;font-weight:600;">Итого ЗП</td><td style="padding:8px 12px;font-weight:600;">Оклад + Ночные + Пороги + Конверсия + KPI + Доплата</td><td style="padding:8px 12px;"></td></tr>
+          </tbody>
+        </table>
+        <p style="color:#6b7280;font-size:13px;">Данные ЗП сохраняются в браузере по кнопке «Сохранить» и доступны при следующем открытии файла. Каждый месяц хранится отдельно.</p>
+      </div>
+    </div>
+
+  </div><!-- /tabRules -->
+
 </div><!-- /container -->
 
 <script>
@@ -580,7 +704,10 @@ function parseMoney(val) {
   return parseFloat(s) || 0;
 }
 
-// ID → имя для водителей и механиков
+// ID → название для поля "Тип клиента ДЦ"
+const CLIENT_TYPE_MAP = {
+  490:'Корпоративный', 491:'Клубный', 516:'Разовый', 680:'Самонайденный', 681:'Обычный',
+};
 const driversMap = {
   6194:'Радюшкин Дмитрий', 6195:'Смышляев Александр', 6196:'Суханов Александр',
   6197:'Репин Роман', 6198:'Нарышкин Павел', 6199:'Станкевич Сергей',
@@ -594,7 +721,31 @@ const driversMap = {
 let usersMap = {};   // id → name
 let allDeals = [];   // last loaded deals
 
-// ─── Load fields & users on connect ────────────────────────────────────────
+// ─── Номинал ─────────────────────────────────────────────────────────────────
+function calcNominal(d, amount, partner, company, service, clientTypeId, driverIds) {
+  const isPartnerDriver = driverIds.includes('9317') || driverIds.includes(9317);
+  const isEvacuation    = service === 'Эвакуация';
+  const isTechHelp      = service === 'Техпомощь';
+  const cType           = String(clientTypeId || '');
+
+  // Разовый (516)
+  if (cType === '516') {
+    return isPartnerDriver ? (company || 0) : amount;
+  }
+  // Клубный (491)
+  if (cType === '491') {
+    const base = isEvacuation ? 4500 : isTechHelp ? 2500 : 0;
+    return base + amount;
+  }
+  // Корпоративный (490)
+  if (cType === '490') {
+    if (isEvacuation) return 4500;
+    if (isTechHelp)   return 2500;
+    return amount;
+  }
+  // Остальные — сумма сделки
+  return amount;
+}
 async function loadFields() {
   const base = getBase();
   if (!base) return;
@@ -694,7 +845,8 @@ async function loadDeals() {
     while (true) {
       const select = ['ID','TITLE','OPPORTUNITY','ASSIGNED_BY_ID','DATE_CREATE','CLOSEDATE',
                        FIELD_SERVICE_TYPE, FIELD_SERVICE, FIELD_PARTNER_COST, FIELD_KV,
-                       FIELD_PARTNER_FIELD, 'UF_CRM_1780491813', 'UF_CRM_1752155721'];
+                       FIELD_PARTNER_FIELD, 'UF_CRM_1780491813', 'UF_CRM_1752155721',
+                       'UF_CRM_1775749940'];
 
       const r = await bx24('crm.deal.list', { FILTER: filter, SELECT: select, start });
       deals = deals.concat(r.result || []);
@@ -705,6 +857,21 @@ async function loadDeals() {
 
     // Дополнительная фильтрация на клиенте — только сделки с заполненным водителем/механиком
     deals = deals.filter(d => d['UF_CRM_1780491813'] && d['UF_CRM_1780491813'].length);
+
+    // Фильтр по времени окончания обслуживания (UF_CRM_1775749940)
+    const timeFrom = document.getElementById('fTimeFrom').value; // "HH:MM"
+    const timeTo   = document.getElementById('fTimeTo').value;
+    if (timeFrom || timeTo) {
+      deals = deals.filter(d => {
+        const raw = d['UF_CRM_1775749940'];
+        if (!raw) return false;
+        // Bitrix возвращает datetime вида "2026-06-25T18:30:00+03:00"
+        const timeStr = raw.slice(11, 16); // "HH:MM"
+        if (timeFrom && timeStr < timeFrom) return false;
+        if (timeTo   && timeStr > timeTo)   return false;
+        return true;
+      });
+    }
     allDeals = deals;
     renderTable(deals);
   } catch(e) {
@@ -747,6 +914,10 @@ function renderTable(deals) {
     const driverIds = Array.isArray(driverRaw) ? driverRaw : (driverRaw ? [driverRaw] : []);
     const driverName = driverIds.map(id => usersMap[id] || driversMap[id] || id).join(', ') || '—';
 
+    // Тип клиента ДЦ
+    const clientTypeId  = d['UF_CRM_1752155721'];
+    const clientType    = clientTypeId ? (CLIENT_TYPE_MAP[clientTypeId] || clientTypeId) : '—';
+
     const rate = RATES[partner];
     let company = null, bonus = null, pct = '—';
 
@@ -773,6 +944,9 @@ function renderTable(deals) {
     if (company !== null) { totalCompany += company; totalBonus += bonus; }
     totalAmount += amount;
 
+    // Номинал — считается после company
+    const nominal = calcNominal(d, amount, partner, company, service, clientTypeId, driverIds);
+
     const badgeClass = partner === 'ТП' ? 'badge-tp' : partner === 'Выездной шиномонтаж' ? 'badge-shin' : 'badge-other';
 
     rows += `<tr>
@@ -780,10 +954,12 @@ function renderTable(deals) {
       <td>${dateStr}</td>
       <td>${respName}</td>
       <td>${driverName}</td>
+      <td>${clientType}</td>
       <td>${service || '—'}</td>
       <td>${svcType || '—'}</td>
       <td><span class="badge ${badgeClass}">${partner || '—'}</span></td>
       <td class="amount">${fmt(amount)}</td>
+      <td style="font-weight:500;color:#7c3aed;">${fmt(nominal)}</td>
       <td style="color:#6b7280;">${partnerCost > 0 ? fmt(partnerCost) : '—'}</td>
       <td style="color:#6b7280;">${kv > 0 ? fmt(kv) : '—'}</td>
       <td style="color:#6b7280;font-size:12px;">${pct}</td>
@@ -801,10 +977,12 @@ function renderTable(deals) {
           <th>Дата завершения</th>
           <th>Ответственный</th>
           <th>Водитель / Механик</th>
+          <th>Тип клиента</th>
           <th>Услуга</th>
           <th>Тип услуги</th>
           <th>Партнёр</th>
           <th>Сумма</th>
+          <th>Номинал</th>
           <th>Стоимость у партнёра</th>
           <th>КВ партнёра</th>
           <th>Ставка к/д</th>
@@ -907,7 +1085,7 @@ function renderSummaryByEmployee(deals) {
 function exportCSV() {
   if (!allDeals.length) return;
 
-  const header = ['ID','Дата завершения','Ответственный','Водитель / Механик','Услуга','Тип услуги','Партнёр','Сумма','Стоимость у партнёра','КВ партнёра','Доля компании','Доплата диспетчеру'];
+  const header = ['ID','Дата завершения','Ответственный','Водитель / Механик','Тип клиента','Услуга','Тип услуги','Партнёр','Сумма','Номинал','Стоимость у партнёра','КВ партнёра','Доля компании','Доплата диспетчеру'];
 
   const dataRows = allDeals.map(d => {
     const amount      = parseFloat(d.OPPORTUNITY) || 0;
@@ -933,7 +1111,10 @@ function exportCSV() {
         else if (partnerCost > 0) { company = amount - partnerCost; bonus = company * 0.10; }
       }
     }
-    return [d.ID, (d.CLOSEDATE||'').slice(0,10), respName, driverName, service, svcType, partner, amount, partnerCost||'', kv||'', company||'', bonus||''];
+    const clientTypeId = d['UF_CRM_1752155721'];
+    const clientType   = clientTypeId ? (CLIENT_TYPE_MAP[clientTypeId] || clientTypeId) : '';
+    const nominal      = calcNominal(d, amount, partner, company || 0, service, clientTypeId, driverIds);
+    return [d.ID, (d.CLOSEDATE||'').slice(0,10), respName, driverName, clientType, service, svcType, partner, amount, nominal, partnerCost||'', kv||'', company||'', bonus||''];
   });
 
   // Summary rows by employee
@@ -1030,16 +1211,26 @@ function resetFilters() {
   document.getElementById('fStage').value = '';
   document.getElementById('fDateFrom').value = '';
   document.getElementById('fDateTo').value = '';
+  document.getElementById('fTimeFrom').value = '';
+  document.getElementById('fTimeTo').value = '';
 }
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('tabDeals').style.display  = tab === 'deals'  ? 'block' : 'none';
   document.getElementById('tabSalary').style.display = tab === 'salary' ? 'block' : 'none';
+  document.getElementById('tabShifts').style.display = tab === 'shifts' ? 'block' : 'none';
+  document.getElementById('tabRules').style.display  = tab === 'rules'  ? 'block' : 'none';
   document.querySelectorAll('.tab').forEach((el, i) => {
-    el.classList.toggle('active', (i === 0 && tab === 'deals') || (i === 1 && tab === 'salary'));
+    el.classList.toggle('active',
+      (i === 0 && tab === 'deals') ||
+      (i === 1 && tab === 'salary') ||
+      (i === 2 && tab === 'shifts') ||
+      (i === 3 && tab === 'rules')
+    );
   });
   if (tab === 'salary') syncSalaryFromDeals();
+  if (tab === 'shifts') renderShiftsTable();
 }
 
 // ─── Salary ───────────────────────────────────────────────────────────────────
@@ -1332,8 +1523,459 @@ function exportSalaryXLSX() {
   a.click();
 }
 
-// Init on load
-window.addEventListener('DOMContentLoaded', () => { initMonths(); });
+// ─── Shifts / Schedule ────────────────────────────────────────────────────────
+// shiftData: { 'YYYY-MM': {
+//   schedule: { 'name': { 'YYYY-MM-DD': shiftType } },
+//   thresholds: { 'YYYY-MM-DD': { carsDay, carsNight, nominal } }
+// } }
+let shiftData         = {};
+let currentShiftMonth = '';
+
+const SHIFT_TYPES = ['8-16','16-00','00-08','9-21','7-15','8-16+16-00','16-00+00-08','вых','отпуск'];
+
+const SHIFT_COLORS = {
+  '8-16':        { bg:'#a3d49b', text:'#1a4731' },  // зелёный — утро
+  '16-00':       { bg:'#fde68a', text:'#78350f' },  // жёлтый — вечер
+  '00-08':       { bg:'#f97316', text:'#fff'    },  // оранжевый — ночь
+  '9-21':        { bg:'#67e8f9', text:'#0e4f5a' },  // голубой — день
+  '7-15':        { bg:'#c084fc', text:'#4a1d96' },  // фиолетовый — руководитель
+  '8-16+16-00':  { bg:'#fb923c', text:'#fff'    },  // тёмно-оранжевый — двойная
+  '16-00+00-08': { bg:'#ef4444', text:'#fff'    },  // красный — двойная ночь
+  'вых':         { bg:'#f1f5f9', text:'#94a3b8' },  // серый — выходной
+  'отпуск':      { bg:'#bfdbfe', text:'#1e40af' },  // синий — отпуск
+  '':            { bg:'#ffffff', text:'#374151' },
+};
+
+const SHIFT_HOURS = {
+  '8-16':8, '16-00':8, '00-08':8, '9-21':12, '7-15':8,
+  '8-16+16-00':16, '16-00+00-08':16, 'вых':0, 'отпуск':0,
+};
+const SHIFT_NIGHT_COUNT = { '00-08':1, '16-00+00-08':1 };
+const SHIFT_SHIFT_COUNT = {
+  '8-16':1,'16-00':1,'00-08':1,'9-21':1,'7-15':1,
+  '8-16+16-00':2,'16-00+00-08':2,'вых':0,'отпуск':0,
+};
+const SHIFT_WORKS = s => SHIFT_SHIFT_COUNT[s] > 0;
+
+const SHIFT_BONUS_PER   = 550;
+const THRESHOLD_DAY     = 30000;
+const THRESHOLD_NIGHT   = 15000;
+const THRESHOLD_STEP    = 30000;
+const MANAGER_NAME      = 'Сережа Зубцов';
+
+function calcShiftBonus(nominal, threshold) {
+  if (threshold <= 0 || nominal < threshold) return 0;
+  const excess = nominal - threshold;
+  const extraSteps = Math.floor(excess / THRESHOLD_STEP);
+  return 1 + extraSteps;
+}
+
+// Employee info: name, position
+const SCHEDULE_EMPLOYEES = [
+  { name:'Никита Парамонов',  pos:'Диспетчер'    },
+  { name:'Ваня Тимченко',     pos:'Диспетчер'    },
+  { name:'Вова Сидельник',    pos:'Диспетчер'    },
+  { name:'Потапов Станислав', pos:'Диспетчер'    },
+  { name:'Борозенец Юлия',    pos:'Диспетчер'    },
+  { name:'Тинякова Вероника', pos:'Диспетчер'    },
+  { name:'Саша Чирикин',      pos:'Стажер'       },
+  { name:'Сережа Зубцов',     pos:'Руководитель' },
+];
+
+// Map display name → usersMap name
+const SCHED_TO_USERS = {
+  'Никита Парамонов':  'Парамонов Никита',
+  'Ваня Тимченко':     'Тимченко Иван Александрович',
+  'Вова Сидельник':    'Сидельник Владимир',
+  'Потапов Станислав': 'Потапов Станислав',
+  'Борозенец Юлия':    'Борозенец Юлия',
+  'Тинякова Вероника': 'Тинякова Вероника',
+  'Саша Чирикин':      'Чирикин Александр',
+  'Сережа Зубцов':     'Зубцов Сергей Андреевич',
+};
+
+function getDaysInMonth(key) {
+  const [y, m] = key.split('-').map(Number);
+  const days = [];
+  const d = new Date(y, m - 1, 1);
+  while (d.getMonth() === m - 1) {
+    days.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+
+const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+
+function initShiftData() {
+  const saved = localStorage.getItem('shiftData_v2');
+  if (saved) { try { shiftData = JSON.parse(saved); } catch(e) { shiftData = {}; } }
+  if (!Object.keys(shiftData).length) {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    shiftData[key] = { schedule: {}, thresholds: {} };
+  }
+  rebuildShiftMonthSelect();
+}
+
+function rebuildShiftMonthSelect() {
+  const sel  = document.getElementById('shiftMonth');
+  const keys = Object.keys(shiftData).sort().reverse();
+  sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
+  if (!currentShiftMonth || !shiftData[currentShiftMonth]) currentShiftMonth = keys[0];
+  sel.value = currentShiftMonth;
+  document.getElementById('shiftMonthTitle').textContent = 'Расписание — ' + monthLabel(currentShiftMonth);
+}
+
+function onShiftMonthChange() {
+  currentShiftMonth = document.getElementById('shiftMonth').value;
+  document.getElementById('shiftMonthTitle').textContent = 'Расписание — ' + monthLabel(currentShiftMonth);
+  renderShiftsTable();
+}
+
+function addShiftMonth() {
+  const input = prompt('Введите месяц (ГГГГ-ММ), например 2026-07:');
+  if (!input || !/^\d{4}-\d{2}$/.test(input.trim())) { alert('Неверный формат'); return; }
+  const key = input.trim();
+  if (!shiftData[key]) shiftData[key] = { schedule: {}, thresholds: {} };
+  currentShiftMonth = key;
+  rebuildShiftMonthSelect();
+  renderShiftsTable();
+}
+
+function saveShiftData() {
+  try {
+    localStorage.setItem('shiftData_v2', JSON.stringify(shiftData));
+    const btn = document.querySelector('[onclick="saveShiftData()"]');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Сохранено'; btn.style.color = '#16a34a';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+function setShift(emp, dateStr, val) {
+  if (!shiftData[currentShiftMonth].schedule[emp]) shiftData[currentShiftMonth].schedule[emp] = {};
+  shiftData[currentShiftMonth].schedule[emp][dateStr] = val;
+  renderShiftsTable();
+}
+
+function setThreshold(dateStr, field, val) {
+  if (!shiftData[currentShiftMonth].thresholds[dateStr]) shiftData[currentShiftMonth].thresholds[dateStr] = {};
+  shiftData[currentShiftMonth].thresholds[dateStr][field] = val;
+  renderShiftsTable();
+}
+
+function renderShiftsTable() {
+  if (!Object.keys(shiftData).length) initShiftData();
+  const data  = shiftData[currentShiftMonth] || { schedule: {}, thresholds: {} };
+  const days  = getDaysInMonth(currentShiftMonth);
+  const wrap  = document.getElementById('scheduleWrap');
+
+  const thOpts = SHIFT_TYPES.map(s => {
+    const c = SHIFT_COLORS[s] || { bg:'#fff', text:'#374151' };
+    return `<option value="${s}" style="background:${c.bg};color:${c.text};">${s || '—'}</option>`;
+  }).join('');
+
+  // Color legend
+  let legend = `<div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;flex-wrap:wrap;gap:8px;font-size:11px;">`;
+  SHIFT_TYPES.forEach(s => {
+    if (!s) return;
+    const c = SHIFT_COLORS[s] || { bg:'#fff', text:'#374151' };
+    legend += `<span style="background:${c.bg};color:${c.text};padding:2px 8px;border-radius:4px;font-weight:500;">${s}</span>`;
+  });
+  legend += `</div>`;
+
+  // Build table
+  let html = legend + `<table style="border-collapse:collapse;font-size:12px;min-width:100%;">`;
+
+  // Header rows
+  html += `<thead><tr>
+    <th style="text-align:left;padding:6px 10px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;min-width:130px;">Сотрудник</th>
+    <th style="text-align:left;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;font-size:10px;color:#6b7280;">Должность</th>`;
+  days.forEach(d => {
+    const ds   = d.toISOString().slice(0,10);
+    const dn   = DAY_NAMES[d.getDay()];
+    const isWE = d.getDay() === 0 || d.getDay() === 6;
+    const bg   = isWE ? '#fef2f2' : '#f9fafb';
+    html += `<th style="text-align:center;padding:4px 4px;background:${bg};border:1px solid #e5e7eb;min-width:80px;">
+      <div style="font-weight:600;color:${isWE?'#dc2626':'#374151'};font-size:11px;">${dn}</div>
+      <div style="font-size:10px;color:#6b7280;">${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}</div>
+    </th>`;
+  });
+  html += `<th style="text-align:right;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;">Часов</th>
+    <th style="text-align:right;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;">% часов</th>
+    <th style="text-align:right;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;">Смен</th>
+    <th style="text-align:right;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;">Ночных</th>
+    <th style="text-align:right;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;color:#4f46e5;">Доплата</th>
+  </tr></thead><tbody>`;
+
+  // First pass: calc total hours for % calculation
+  const empStats = {};
+  SCHEDULE_EMPLOYEES.forEach(({ name }) => {
+    const sched = (data.schedule[name] || {});
+    let hours = 0, shifts = 0, nights = 0, bonus = 0;
+    days.forEach(d => {
+      const ds = d.toISOString().slice(0,10);
+      const s  = sched[ds] || '';
+      hours  += SHIFT_HOURS[s]       || 0;
+      shifts += SHIFT_SHIFT_COUNT[s] || 0;
+      nights += SHIFT_NIGHT_COUNT[s] || 0;
+      const thr = data.thresholds[ds] || {};
+      const threshold = (parseFloat(thr.carsDay)||0)*THRESHOLD_DAY + (parseFloat(thr.carsNight)||0)*THRESHOLD_NIGHT;
+      const steps = calcShiftBonus(parseFloat(thr.nominal)||0, threshold);
+      const works = name === MANAGER_NAME ? steps > 0 : (SHIFT_WORKS(s) && steps > 0);
+      if (works) bonus += steps * SHIFT_BONUS_PER;
+    });
+    empStats[name] = { hours, shifts, nights, bonus };
+  });
+
+  const totalHours = Object.values(empStats).reduce((s, e) => s + e.hours, 0);
+  let totalShifts = 0, totalNight = 0, totalBonus = 0;
+
+  // Employee rows
+  const empBonus = {};
+  SCHEDULE_EMPLOYEES.forEach(({ name, pos }) => {
+    const sched = data.schedule[name] || {};
+    const { hours, shifts, nights, bonus } = empStats[name];
+    empBonus[name] = bonus;
+    totalShifts += shifts;
+    totalNight  += nights;
+    totalBonus  += bonus;
+
+    const pct = totalHours > 0 ? Math.round(hours / totalHours * 100) : 0;
+
+    const posColor = pos === 'Руководитель' ? '#7c3aed' : pos === 'Стажер' ? '#d97706' : '#6b7280';
+
+    html += `<tr>
+      <td style="padding:4px 10px;border:1px solid #e5e7eb;font-weight:500;white-space:nowrap;background:#fafafa;">${name}</td>
+      <td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:10px;color:${posColor};white-space:nowrap;background:#fafafa;">${pos}</td>`;
+
+    days.forEach(d => {
+      const ds  = d.toISOString().slice(0,10);
+      const s   = sched[ds] || '';
+      const clr = SHIFT_COLORS[s] || SHIFT_COLORS[''];
+      const opts = SHIFT_TYPES.map(t => '<option value="' + t + '"' + (t===s?' selected':'') + '>' + (t||'—') + '</option>').join('');
+      html += '<td style="padding:1px 2px;border:1px solid #e5e7eb;text-align:center;background:' + clr.bg + ';">'
+        + '<select onchange="setShift(\'' + name + '\',\'' + ds + '\',this.value)"'
+        + ' style="font-size:10px;border:none;background:transparent;width:100%;text-align:center;cursor:pointer;outline:none;color:' + clr.text + ';font-weight:' + (s&&s!=='вых'&&s!=='отпуск'?'600':'400') + ';">'
+        + '<option value="">—</option>' + opts
+        + '</select></td>';
+    });
+
+    html += `<td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-weight:600;">${hours}</td>
+      <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;color:#4f46e5;font-weight:500;">${pct}%</td>
+      <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${shifts}</td>
+      <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${nights}</td>
+      <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-weight:600;color:#4f46e5;">${bonus > 0 ? fmt(bonus) : '—'}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  html += `<tr style="background:#f0fdf4;font-weight:600;">
+    <td style="padding:4px 10px;border:1px solid #e5e7eb;" colspan="2">Итого</td>`;
+  days.forEach(() => { html += `<td style="border:1px solid #e5e7eb;"></td>`; });
+  html += `<td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${totalHours}</td>
+    <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">100%</td>
+    <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${totalShifts}</td>
+    <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${totalNight}</td>
+    <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;color:#4f46e5;">${fmt(totalBonus)}</td>
+  </tr>`;
+
+  // Threshold rows — 2 extra cols (name + position)
+  let daysOk = 0;
+  html += `<tr style="background:#f0fdf4;">
+    <td style="padding:4px 10px;border:1px solid #e5e7eb;font-weight:500;font-size:11px;color:#6b7280;" colspan="2">Машин днём</td>`;
+  days.forEach(d => {
+    const ds  = d.toISOString().slice(0,10);
+    const val = (data.thresholds[ds] || {}).carsDay || '';
+    html += `<td style="padding:2px 4px;border:1px solid #e5e7eb;">
+      <input type="number" min="0" value="${val}" placeholder="0"
+        onchange="setThreshold('${ds}','carsDay',this.value)"
+        style="width:100%;border:none;background:transparent;font-size:11px;text-align:center;outline:none;" />
+    </td>`;
+  });
+  html += `<td colspan="6" style="border:1px solid #e5e7eb;"></td></tr>`;
+
+  html += `<tr style="background:#fff7ed;">
+    <td style="padding:4px 10px;border:1px solid #e5e7eb;font-weight:500;font-size:11px;color:#6b7280;" colspan="2">Машин ночью</td>`;
+  days.forEach(d => {
+    const ds  = d.toISOString().slice(0,10);
+    const val = (data.thresholds[ds] || {}).carsNight || '';
+    html += `<td style="padding:2px 4px;border:1px solid #e5e7eb;">
+      <input type="number" min="0" value="${val}" placeholder="0"
+        onchange="setThreshold('${ds}','carsNight',this.value)"
+        style="width:100%;border:none;background:transparent;font-size:11px;text-align:center;outline:none;" />
+    </td>`;
+  });
+  html += `<td colspan="6" style="border:1px solid #e5e7eb;"></td></tr>`;
+
+  html += `<tr style="background:#f0f9ff;">
+    <td style="padding:4px 10px;border:1px solid #e5e7eb;font-weight:500;font-size:11px;color:#6b7280;" colspan="2">Факт. номинал</td>`;
+  days.forEach(d => {
+    const ds  = d.toISOString().slice(0,10);
+    const val = (data.thresholds[ds] || {}).nominal || '';
+    const thr = data.thresholds[ds] || {};
+    const carsDay   = parseFloat(thr.carsDay)   || 0;
+    const carsNight = parseFloat(thr.carsNight) || 0;
+    const threshold = carsDay * THRESHOLD_DAY + carsNight * THRESHOLD_NIGHT;
+    const steps     = calcShiftBonus(parseFloat(val) || 0, threshold);
+    if (steps > 0) daysOk++;
+    const bg = steps > 0 ? '#dcfce7' : threshold > 0 && val ? '#fef2f2' : '#f0f9ff';
+    const label = steps > 0 ? `<div style="font-size:9px;color:#16a34a;font-weight:600;">×${steps} порог${steps>1?'а':''}</div>` : '';
+    html += `<td style="padding:2px 4px;border:1px solid #e5e7eb;background:${bg};">
+      <input type="number" min="0" value="${val}" placeholder="0"
+        onchange="setThreshold('${ds}','nominal',this.value)"
+        style="width:100%;border:none;background:transparent;font-size:11px;text-align:center;outline:none;" />
+      ${label}
+    </td>`;
+  });
+  html += `<td colspan="6" style="border:1px solid #e5e7eb;padding:4px 8px;font-size:11px;color:#16a34a;">✓ зелёный = порог выполнен, ×N = кол-во порогов</td></tr>`;
+
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+
+  // Summary cards
+  document.getElementById('shiftTotalShifts').textContent = totalShifts;
+  document.getElementById('shiftTotalNight').textContent  = totalNight;
+  document.getElementById('shiftDaysOk').textContent      = daysOk;
+  document.getElementById('shiftTotalBonus').textContent  = fmt(totalBonus);
+  document.getElementById('shiftSummary').style.display   = 'grid';
+
+  // Per-employee summary table
+  const empRows = SCHEDULE_EMPLOYEES
+    .filter(({ name }) => empBonus[name] > 0)
+    .map(({ name, pos }) => `<tr style="border-top:1px solid #f3f4f6;">
+      <td style="padding:10px 16px;font-weight:500;">${name}</td>
+      <td style="padding:10px 16px;color:#6b7280;font-size:12px;">${pos}</td>
+      <td style="padding:10px 16px;text-align:right;font-weight:600;color:#4f46e5;">${fmt(empBonus[name])}</td>
+    </tr>`).join('');
+
+  if (empRows) {
+    document.getElementById('shiftEmpSummaryBody').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#fafafa;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">
+          <th style="text-align:left;padding:10px 16px;font-weight:600;">Сотрудник</th>
+          <th style="text-align:left;padding:10px 16px;font-weight:600;">Должность</th>
+          <th style="text-align:right;padding:10px 16px;font-weight:600;">Доплата за смены</th>
+        </tr></thead>
+        <tbody>${empRows}</tbody>
+      </table>`;
+    document.getElementById('shiftEmpSummary').style.display = 'block';
+  } else {
+    document.getElementById('shiftEmpSummary').style.display = 'none';
+  }
+}
+
+function pullNominalFromDeals() {
+  if (!allDeals.length) {
+    alert('Сначала загрузите сделки на вкладке «Сделки и доплаты»');
+    return;
+  }
+
+  // Accumulate nominal per CLOSEDATE day
+  const nominalByDay = {};
+
+  allDeals.forEach(d => {
+    const closeDate = (d.CLOSEDATE || '').slice(0, 10);
+    if (!closeDate) return;
+
+    // Only count deals in current shift month
+    if (closeDate.slice(0, 7) !== currentShiftMonth) return;
+
+    const amount      = parseFloat(d.OPPORTUNITY) || 0;
+    const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
+    const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
+    const partner     = PARTNER_MAP[partnerVal] || partnerVal;
+    const serviceId   = d[FIELD_SERVICE];
+    const service     = serviceId ? (SERVICE_MAP[serviceId] || serviceId) : '';
+    const clientTypeId = d['UF_CRM_1752155721'];
+    const driverRaw   = d['UF_CRM_1780491813'];
+    const driverIds   = Array.isArray(driverRaw) ? driverRaw : (driverRaw ? [driverRaw] : []);
+
+    // Calc company share for nominal
+    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
+    const kv          = parseMoney(d[FIELD_KV]);
+    const rate        = RATES[partner];
+    let company = null;
+    if (rate) {
+      if (rate.mode === 'percent')     company = amount * rate.company;
+      else if (rate.mode === 'diff') {
+        if (kv > 0)               company = kv;
+        else if (partnerCost > 0) company = amount - partnerCost;
+      }
+    }
+
+    const nominal = calcNominal(d, amount, partner, company, service, clientTypeId, driverIds);
+
+    nominalByDay[closeDate] = (nominalByDay[closeDate] || 0) + nominal;
+  });
+
+  // Fill thresholds
+  if (!shiftData[currentShiftMonth]) shiftData[currentShiftMonth] = { schedule: {}, thresholds: {} };
+
+  let updated = 0;
+  Object.entries(nominalByDay).forEach(([ds, nom]) => {
+    if (!shiftData[currentShiftMonth].thresholds[ds]) shiftData[currentShiftMonth].thresholds[ds] = {};
+    shiftData[currentShiftMonth].thresholds[ds].nominal = Math.round(nom);
+    updated++;
+  });
+
+  renderShiftsTable();
+  alert(`Номинал обновлён за ${updated} ${updated === 1 ? 'день' : updated < 5 ? 'дня' : 'дней'}`);
+}
+
+  const data = shiftData[currentShiftMonth] || { schedule: {}, thresholds: {} };
+  const days = getDaysInMonth(currentShiftMonth);
+  const wb   = XLSX.utils.book_new();
+
+  // Sheet 1: Schedule
+  const header = ['Сотрудник','Должность',...days.map(d=>`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`),'Часов','% часов','Смен','Ночных','Доплата смены'];
+  const totalHoursXlsx = SCHEDULE_EMPLOYEES.reduce((sum, { name }) => {
+    const sched = data.schedule[name] || {};
+    return sum + days.reduce((s, d) => s + (SHIFT_HOURS[sched[d.toISOString().slice(0,10)]||'']||0), 0);
+  }, 0);
+  const rows = SCHEDULE_EMPLOYEES.map(({ name, pos }) => {
+    const sched = data.schedule[name] || {};
+    let hours = 0, shifts = 0, nights = 0, bonus = 0;
+    const cells = days.map(d => {
+      const ds = d.toISOString().slice(0,10);
+      const s  = sched[ds] || '';
+      hours  += SHIFT_HOURS[s]       || 0;
+      shifts += SHIFT_SHIFT_COUNT[s] || 0;
+      nights += SHIFT_NIGHT_COUNT[s] || 0;
+      const thr = data.thresholds[ds] || {};
+      const threshold = (parseFloat(thr.carsDay)||0)*THRESHOLD_DAY + (parseFloat(thr.carsNight)||0)*THRESHOLD_NIGHT;
+      const steps = calcShiftBonus(parseFloat(thr.nominal)||0, threshold);
+      const works = name === MANAGER_NAME ? steps > 0 : (SHIFT_WORKS(s) && steps > 0);
+      if (works) bonus += steps * SHIFT_BONUS_PER;
+      return s || '—';
+    });
+    const pct = totalHoursXlsx > 0 ? Math.round(hours / totalHoursXlsx * 100) + '%' : '0%';
+    return [name, pos, ...cells, hours, pct, shifts, nights, bonus];
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Расписание');
+
+  // Sheet 2: Thresholds
+  const tHeader = ['Дата','Машин днём','Машин ночью','Порог','Факт. номинал','Порогов выполнено'];
+  const tRows = days.map(d => {
+    const ds  = d.toISOString().slice(0,10);
+    const thr = data.thresholds[ds] || {};
+    const carsDay   = parseFloat(thr.carsDay)   || 0;
+    const carsNight = parseFloat(thr.carsNight) || 0;
+    const nominal   = parseFloat(thr.nominal)   || 0;
+    const threshold = carsDay * THRESHOLD_DAY + carsNight * THRESHOLD_NIGHT;
+    const steps     = calcShiftBonus(nominal, threshold);
+    return [`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`, carsDay, carsNight, threshold, nominal, steps];
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet([tHeader, ...tRows]);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Пороги');
+
+  XLSX.writeFile(wb, `Смены_${currentShiftMonth}.xlsx`);
+}
+
+// Init shifts on load
+window.addEventListener('DOMContentLoaded', () => { initMonths(); initShiftData(); });
 </script>
 </body>
 </html>
