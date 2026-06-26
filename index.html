@@ -356,6 +356,7 @@
         <option value="690">А24</option>
         <option value="888">КарТакси</option>
         <option value="1041">Подрядный эвакуатор</option>
+        <option value="1075">- (не указан)</option>
       </select>
     </div>
     <div class="filter-group">
@@ -441,6 +442,10 @@
     <div class="card accent">
       <div class="label">Итого доплат</div>
       <div class="value" id="sBonus">0 ₽</div>
+    </div>
+    <div class="card" style="background:#faf5ff;border-color:#e9d5ff;cursor:pointer;" onclick="showNominalBreakdown(lastNominalBreakdown)" title="Нажмите для расшифровки по дням">
+      <div class="label" style="color:#7c3aed;">Номинал за период ↗</div>
+      <div class="value" style="color:#7c3aed;" id="sNominal">0 ₽</div>
     </div>
   </div>
 
@@ -532,7 +537,7 @@
       </div>
     </div>
 
-    <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +300 ₽ &nbsp;|&nbsp; Доплата из вкладки «Сделки» подтягивается автоматически если совпадает имя</p>
+    <p class="footer-note">Ночная смена = +300 ₽ &nbsp;|&nbsp; 1 порог = +550 ₽ &nbsp;|&nbsp; Доплата из вкладки «Сделки» подтягивается автоматически если совпадает имя</p>
   </div><!-- /tabSalary -->
 
   <!-- ══════════════════ ВКЛАДКА: СМЕНЫ ══════════════════ -->
@@ -636,7 +641,7 @@
           <tbody>
             <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Оклад</td><td style="padding:8px 12px;">Часов × Ставка/час</td><td style="padding:8px 12px;color:#6b7280;">Ставка по умолчанию 135 ₽/час (кроме Зубцова)</td></tr>
             <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Ночные смены</td><td style="padding:8px 12px;">Кол-во смен × 300 ₽</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
-            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Пороги</td><td style="padding:8px 12px;">Кол-во порогов × 300 ₽</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
+            <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Пороги</td><td style="padding:8px 12px;">Кол-во порогов × 550 ₽</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
             <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Бонус конверсии</td><td style="padding:8px 12px;">60–69% → +30% оклада<br>70%+ → +40% оклада</td><td style="padding:8px 12px;color:#6b7280;">Конверсия вводится вручную из BI</td></tr>
             <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">KPI</td><td style="padding:8px 12px;">Сумма вручную</td><td style="padding:8px 12px;color:#6b7280;">Вводится вручную</td></tr>
             <tr style="border-top:1px solid #f3f4f6;"><td style="padding:8px 12px;">Доплата по сделкам</td><td style="padding:8px 12px;">Авто из вкладки «Сделки»</td><td style="padding:8px 12px;color:#6b7280;">Только сделки за выбранный месяц</td></tr>
@@ -695,6 +700,7 @@ const SERVICE_TYPE_MAP = {
 const PARTNER_MAP = {
   688:'Лоджик', 689:'Выездной шиномонтаж', 690:'А24',
   888:'КарТакси', 1001:'ТП', 1041:'Подрядный эвакуатор',
+  1075:'—',  // прочерк = не передан партнёру
 };
 
 // Парсинг поля типа money ("5000|RUB" → 5000)
@@ -720,6 +726,7 @@ const driversMap = {
 
 let usersMap = {};   // id → name
 let allDeals = [];   // last loaded deals
+let lastNominalBreakdown = {}; // day → [{...}] — last computed breakdown
 
 // ─── Номинал ─────────────────────────────────────────────────────────────────
 function calcNominal(d, amount, partner, company, service, clientTypeId, driverIds) {
@@ -892,8 +899,9 @@ function renderTable(deals) {
     return;
   }
 
-  let totalAmount = 0, totalCompany = 0, totalBonus = 0;
+  let totalAmount = 0, totalCompany = 0, totalBonus = 0, totalNominal = 0;
   let rows = '';
+  const nominalBreakdown = {}; // day → [{...}]
 
   deals.forEach(d => {
     const amount      = parseFloat(d.OPPORTUNITY) || 0;
@@ -946,11 +954,18 @@ function renderTable(deals) {
 
     // Номинал — считается после company
     const nominal = calcNominal(d, amount, partner, company, service, clientTypeId, driverIds);
+    totalNominal += nominal;
+
+    // Breakdown by day
+    if (dateStr !== '—') {
+      if (!nominalBreakdown[dateStr]) nominalBreakdown[dateStr] = [];
+      nominalBreakdown[dateStr].push({ id: d.ID, clientType, service, partner: partner || '—', amount, nominal });
+    }
 
     const badgeClass = partner === 'ТП' ? 'badge-tp' : partner === 'Выездной шиномонтаж' ? 'badge-shin' : 'badge-other';
 
     rows += `<tr>
-      <td>${d.ID}</td>
+      <td><a href="https://portal.angelclub.ru/crm/deal/details/${d.ID}/" target="_blank" style="color:#4f46e5;text-decoration:none;font-weight:500;">${d.ID}</a></td>
       <td>${dateStr}</td>
       <td>${respName}</td>
       <td>${driverName}</td>
@@ -999,10 +1014,27 @@ function renderTable(deals) {
   document.getElementById('sAmount').textContent  = fmt(totalAmount);
   document.getElementById('sCompany').textContent = fmt(totalCompany);
   document.getElementById('sBonus').textContent   = fmt(totalBonus);
+  document.getElementById('sNominal').textContent = fmt(totalNominal);
   document.getElementById('summary').style.display = 'grid';
   document.getElementById('btnExport').style.display = 'inline-flex';
 
+  // Save breakdown globally for modal and auto-sync to shifts
+  lastNominalBreakdown = nominalBreakdown;
+  syncNominalToShifts(nominalBreakdown);
+
   renderSummaryByEmployee(deals);
+}
+
+// ─── Auto-sync nominal to shifts ─────────────────────────────────────────────
+function syncNominalToShifts(breakdown) {
+  Object.entries(breakdown).forEach(([ds, items]) => {
+    const month = ds.slice(0, 7);
+    if (!shiftData[month]) shiftData[month] = { schedule: {}, thresholds: {} };
+    if (!shiftData[month].thresholds[ds]) shiftData[month].thresholds[ds] = {};
+    const total = items.reduce((s, i) => s + i.nominal, 0);
+    shiftData[month].thresholds[ds].nominal   = Math.round(total);
+    shiftData[month].thresholds[ds].breakdown = items;
+  });
 }
 
 // ─── Summary by employee ─────────────────────────────────────────────────────
@@ -1386,7 +1418,7 @@ function calcSalary(row) {
 
   const base        = hours * rate;
   const nightPay    = nights * 300;
-  const threshPay   = thresholds * 300;
+  const threshPay   = thresholds * 550;
 
   // Конверсионный бонус: 70%+ → 40% оклада, 60%+ → 30% оклада
   let convBonus = 0;
@@ -1871,57 +1903,74 @@ function pullNominalFromDeals() {
     alert('Сначала загрузите сделки на вкладке «Сделки и доплаты»');
     return;
   }
-
-  // Accumulate nominal per CLOSEDATE day
-  const nominalByDay = {};
-
-  allDeals.forEach(d => {
-    const closeDate = (d.CLOSEDATE || '').slice(0, 10);
-    if (!closeDate) return;
-
-    // Only count deals in current shift month
-    if (closeDate.slice(0, 7) !== currentShiftMonth) return;
-
-    const amount      = parseFloat(d.OPPORTUNITY) || 0;
-    const partnerRaw  = d[FIELD_PARTNER_FIELD] || '';
-    const partnerVal  = Array.isArray(partnerRaw) ? partnerRaw[0] : partnerRaw;
-    const partner     = PARTNER_MAP[partnerVal] || partnerVal;
-    const serviceId   = d[FIELD_SERVICE];
-    const service     = serviceId ? (SERVICE_MAP[serviceId] || serviceId) : '';
-    const clientTypeId = d['UF_CRM_1752155721'];
-    const driverRaw   = d['UF_CRM_1780491813'];
-    const driverIds   = Array.isArray(driverRaw) ? driverRaw : (driverRaw ? [driverRaw] : []);
-
-    // Calc company share for nominal
-    const partnerCost = parseMoney(d[FIELD_PARTNER_COST]);
-    const kv          = parseMoney(d[FIELD_KV]);
-    const rate        = RATES[partner];
-    let company = null;
-    if (rate) {
-      if (rate.mode === 'percent')     company = amount * rate.company;
-      else if (rate.mode === 'diff') {
-        if (kv > 0)               company = kv;
-        else if (partnerCost > 0) company = amount - partnerCost;
-      }
-    }
-
-    const nominal = calcNominal(d, amount, partner, company, service, clientTypeId, driverIds);
-
-    nominalByDay[closeDate] = (nominalByDay[closeDate] || 0) + nominal;
-  });
-
-  // Fill thresholds
-  if (!shiftData[currentShiftMonth]) shiftData[currentShiftMonth] = { schedule: {}, thresholds: {} };
-
-  let updated = 0;
-  Object.entries(nominalByDay).forEach(([ds, nom]) => {
-    if (!shiftData[currentShiftMonth].thresholds[ds]) shiftData[currentShiftMonth].thresholds[ds] = {};
-    shiftData[currentShiftMonth].thresholds[ds].nominal = Math.round(nom);
-    updated++;
-  });
-
+  if (!Object.keys(lastNominalBreakdown).length) {
+    alert('Номинал не рассчитан. Загрузите сделки на вкладке «Сделки и доплаты».');
+    return;
+  }
+  syncNominalToShifts(lastNominalBreakdown);
+  showNominalBreakdown(lastNominalBreakdown);
   renderShiftsTable();
-  alert(`Номинал обновлён за ${updated} ${updated === 1 ? 'день' : updated < 5 ? 'дня' : 'дней'}`);
+}
+
+function showNominalBreakdown(breakdownByDay) {
+  const days = Object.keys(breakdownByDay).sort();
+  if (!days.length) {
+    alert('Сделки за этот месяц не найдены. Проверьте загруженные сделки и выбранный месяц.');
+    return;
+  }
+
+  let html = '<div style="font-family:-apple-system,sans-serif;max-width:900px;">';
+  html += '<h2 style="font-size:16px;margin-bottom:16px;">Расшифровка номинала по дням</h2>';
+
+  days.forEach(ds => {
+    const items = breakdownByDay[ds];
+    const total = items.reduce((s, i) => s + i.nominal, 0);
+    const date  = new Date(ds);
+    const label = date.toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+    html += '<strong style="font-size:14px;">' + label + '</strong>';
+    html += '<span style="color:#4f46e5;font-weight:700;">Итого: ' + total.toLocaleString('ru-RU') + ' ₽</span>';
+    html += '</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<tr style="background:#f9fafb;color:#6b7280;font-size:11px;">';
+    html += '<th style="text-align:left;padding:4px 8px;border:1px solid #e5e7eb;">ID</th>';
+    html += '<th style="text-align:left;padding:4px 8px;border:1px solid #e5e7eb;">Тип клиента</th>';
+    html += '<th style="text-align:left;padding:4px 8px;border:1px solid #e5e7eb;">Услуга</th>';
+    html += '<th style="text-align:left;padding:4px 8px;border:1px solid #e5e7eb;">Партнёр</th>';
+    html += '<th style="text-align:right;padding:4px 8px;border:1px solid #e5e7eb;">Сумма сделки</th>';
+    html += '<th style="text-align:right;padding:4px 8px;border:1px solid #e5e7eb;color:#7c3aed;">Номинал</th>';
+    html += '</tr>';
+    items.forEach(item => {
+      html += '<tr>';
+      html += '<td style="padding:4px 8px;border:1px solid #e5e7eb;"><a href="https://portal.angelclub.ru/crm/deal/details/' + item.id + '/" target="_blank" style="color:#4f46e5;text-decoration:none;font-weight:500;">' + item.id + '</a></td>';
+      html += '<td style="padding:4px 8px;border:1px solid #e5e7eb;">' + item.clientType + '</td>';
+      html += '<td style="padding:4px 8px;border:1px solid #e5e7eb;">' + (item.service||'—') + '</td>';
+      html += '<td style="padding:4px 8px;border:1px solid #e5e7eb;">' + item.partner + '</td>';
+      html += '<td style="text-align:right;padding:4px 8px;border:1px solid #e5e7eb;">' + item.amount.toLocaleString('ru-RU') + ' ₽</td>';
+      html += '<td style="text-align:right;padding:4px 8px;border:1px solid #e5e7eb;color:#7c3aed;font-weight:600;">' + item.nominal.toLocaleString('ru-RU') + ' ₽</td>';
+      html += '</tr>';
+    });
+    html += '</table></div>';
+  });
+
+  html += '</div>';
+
+  // Show in modal overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:900px;width:100%;position:relative;max-height:80vh;overflow-y:auto;';
+  box.innerHTML = html;
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ Закрыть';
+  closeBtn.style.cssText = 'position:sticky;top:0;float:right;background:#f3f4f6;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;margin-bottom:8px;';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  box.prepend(closeBtn);
+  overlay.appendChild(box);
+  overlay.onclick = e => { if (e.target === overlay) document.body.removeChild(overlay); };
+  document.body.appendChild(overlay);
 }
 
 function exportShiftsXLSX() {
