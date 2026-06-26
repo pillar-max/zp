@@ -604,6 +604,7 @@
         <select id="shiftYear" onchange="renderShiftsTable()" style="border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:14px;background:#fff;outline:none;min-width:100px;"></select>
       </div>
       <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="generateSchedule()" title="Автогенерация расписания на текущий месяц">⚡ Генерировать</button>
       <button class="btn btn-secondary" onclick="pullNominalFromDeals()" title="Считает номинал из загруженных сделок по датам">⬇ Номинал из сделок</button>
       <button class="btn btn-secondary" onclick="saveShiftData()">💾 Сохранить</button>
       <button class="btn btn-primary" onclick="exportShiftsXLSX()">↓ Скачать Excel</button>
@@ -1006,6 +1007,8 @@ function renderTable(deals) {
     }
 
     if (company !== null) { totalCompany += company; totalBonus += bonus; }
+    // Собственные сделки (партнёр «—») — полная сумма идёт в выручку компании
+    else if (partner === '—' || partner === '') { totalCompany += amount; }
     totalAmount += amount;
 
     // Номинал — считается после company
@@ -1866,10 +1869,234 @@ function addShiftMonth() {
   const input = prompt('Введите месяц (ГГГГ-ММ), например 2026-07:');
   if (!input || !/^\d{4}-\d{2}$/.test(input.trim())) { alert('Неверный формат'); return; }
   const key = input.trim();
-  if (!shiftData[key]) shiftData[key] = { schedule: {}, thresholds: {} };
+
+  if (!shiftData[key]) {
+    shiftData[key] = { schedule: {}, thresholds: {} };
+
+    // Find previous month to copy from
+    const prevKey = getPrevMonth(key);
+    if (prevKey && shiftData[prevKey] && shiftData[prevKey].schedule) {
+      shiftData[key].schedule = copyScheduleShifted(shiftData[prevKey].schedule, prevKey, key);
+    }
+  }
+
   currentShiftMonth = key;
   rebuildShiftMonthSelect();
   renderShiftsTable();
+}
+
+// Get previous month key (e.g. '2026-07' → '2026-06')
+function getPrevMonth(key) {
+  const [y, m] = key.split('-').map(Number);
+  const prev = new Date(y, m - 2, 1); // m-2 because months are 0-indexed
+  return `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+}
+
+// Copy schedule from prevKey to newKey, shifting dates so Monday stays Monday
+function copyScheduleShifted(prevSchedule, prevKey, newKey) {
+  const newSchedule = {};
+  const newDays = getDaysInMonth(newKey);
+
+  // Find the first Monday of the new month
+  const firstMonday = newDays.find(d => d.getDay() === 1);
+  const newStartDay = firstMonday ? firstMonday.getDate() : 1;
+
+  // Find the first Monday of the prev month
+  const prevDays = getDaysInMonth(prevKey);
+  const prevFirstMonday = prevDays.find(d => d.getDay() === 1);
+  const prevStartDay = prevFirstMonday ? prevFirstMonday.getDate() : 1;
+
+  SCHEDULE_EMPLOYEES.forEach(({ name }) => {
+    const prevSched = prevSchedule[name] || {};
+    const empSched  = {};
+
+    newDays.forEach(nd => {
+      // Calculate offset from new month's first Monday
+      const newOffset  = nd.getDate() - newStartDay;
+      // Find corresponding prev date
+      const prevDate = prevStartDay + newOffset;
+      if (prevDate >= 1 && prevDate <= prevDays.length) {
+        const prevDs = prevDays[prevDate - 1].toISOString().slice(0,10);
+        const shift  = prevSched[prevDs] || '';
+        if (shift) empSched[nd.toISOString().slice(0,10)] = shift;
+      }
+    });
+
+    if (Object.keys(empSched).length) newSchedule[name] = empSched;
+  });
+
+  return newSchedule;
+}
+
+// ── Auto-generate schedule ────────────────────────────────────────────────────
+function generateSchedule() {
+  if (!confirm('Перезаписать текущее расписание автогенерацией?')) return;
+
+  if (!shiftData[currentShiftMonth]) shiftData[currentShiftMonth] = { schedule: {}, thresholds: {} };
+  const sched = shiftData[currentShiftMonth].schedule;
+  const days  = getDaysInMonth(currentShiftMonth);
+
+  // ── Employee constraints ──────────────────────────────────────────────────
+  const WORKERS = [
+    { name: 'Никита Парамонов',  slots: ['morning','evening','double_me'], maxPerWeek: 5 },
+    { name: 'Вова Сидельник',    slots: ['day','double_me'],               maxPerWeek: 5 },
+    { name: 'Тинякова Вероника', slots: ['morning','evening','night','day','double_me','double_en'], maxPerWeek: 5 },
+    { name: 'Потапов Станислав', slots: ['evening','night','day','double_en'], maxPerWeek: 5 },
+    { name: 'Борозенец Юлия',    slots: ['morning'],                       maxPerWeek: 5, fixedDow: true },
+  ];
+
+  // Fixed schedule employees
+  const fixedSchedule = {
+    'Борозенец Юлия':   (d) => ([0,6].includes(d.getDay()) ? 'вых' : '8-16'),
+    'Сережа Зубцов':    (d) => ([0,6].includes(d.getDay()) ? 'вых' : '7-15'),
+  };
+
+  // Slot → shift mapping
+  const SLOT_SHIFT = {
+    morning:   '8-16',
+    evening:   '16-00',
+    night:     '00-08',
+    day:       '9-21',
+    double_me: '8-16+16-00',   // covers morning + evening
+    double_en: '16-00+00-08',  // covers evening + night
+  };
+
+  // Which daily slots does each worker-shift cover
+  const SLOT_COVERS = {
+    morning:   ['morning'],
+    evening:   ['evening'],
+    night:     ['night'],
+    day:       ['day'],
+    double_me: ['morning','evening'],
+    double_en: ['evening','night'],
+  };
+
+  // Required daily slots
+  const REQUIRED_SLOTS = ['morning','evening','night','day'];
+
+  // Track weekly work days per worker
+  const weekWork = {};
+  WORKERS.forEach(w => { weekWork[w.name] = 0; });
+
+  // Result
+  WORKERS.forEach(w => { sched[w.name] = sched[w.name] || {}; });
+
+  // Apply fixed schedules
+  Object.entries(fixedSchedule).forEach(([name, fn]) => {
+    if (!sched[name]) sched[name] = {};
+    days.forEach(d => { sched[name][d.toISOString().slice(0,10)] = fn(d); });
+  });
+
+  // Generate for flexible workers day by day
+  // Track consecutive work days per worker for fatigue balancing
+  const consecWork = {};
+  WORKERS.forEach(w => { consecWork[w.name] = 0; });
+  const weeklyCount = {}; // week index → { name → count }
+
+  days.forEach((d, di) => {
+    const ds  = d.toISOString().slice(0,10);
+    const dow = d.getDay(); // 0=Sun
+    const weekIdx = Math.floor(di / 7);
+
+    if (!weeklyCount[weekIdx]) weeklyCount[weekIdx] = {};
+    WORKERS.forEach(w => { weeklyCount[weekIdx][w.name] = weeklyCount[weekIdx][w.name] || 0; });
+
+    // Юля is fixed — skip
+    const flexWorkers = WORKERS.filter(w => !fixedSchedule[w.name]);
+
+    // Determine who can work today (max 5 per week = max 5 days)
+    const canWork = (w) => {
+      const wkCount = weeklyCount[weekIdx][w.name] || 0;
+      return wkCount < 5; // max 5 days/week
+    };
+
+    // Who needs a rest day (has worked 5 consecutive days or hit weekly max)
+    const needsRest = (w) => {
+      const wkCount = weeklyCount[weekIdx][w.name] || 0;
+      return wkCount >= 5;
+    };
+
+    // Slots to fill today: morning, evening, night, day
+    // Юля covers morning on weekdays
+    const juliaDayShift = fixedSchedule['Борозенец Юлия'](d);
+    const juliaWorking  = juliaDayShift === '8-16';
+    const coveredSlots  = new Set(juliaWorking ? ['morning'] : []);
+    const assignments   = {}; // name → slotKey
+
+    // Sort workers: those with fewer weekly days first (balance)
+    const sorted = [...flexWorkers].sort((a, b) =>
+      (weeklyCount[weekIdx][a.name] || 0) - (weeklyCount[weekIdx][b.name] || 0)
+    );
+
+    // Try to fill uncovered slots greedily
+    const slotPriority = juliaWorking
+      ? ['double_en','night','evening','day','double_me']  // morning covered
+      : ['double_me','morning','double_en','night','evening','day']; // need morning too
+
+    // First pass: assign workers to slots
+    slotPriority.forEach(slotKey => {
+      if ([...SLOT_COVERS[slotKey]].every(s => coveredSlots.has(s))) return; // already covered
+      const covers = SLOT_COVERS[slotKey];
+      if (covers.some(s => coveredSlots.has(s))) return; // partial overlap — skip
+
+      // Find best worker for this slot
+      const candidate = sorted.find(w =>
+        !assignments[w.name] &&
+        canWork(w) &&
+        w.slots.includes(slotKey)
+      );
+
+      if (candidate) {
+        assignments[candidate.name] = slotKey;
+        covers.forEach(s => coveredSlots.add(s));
+      }
+    });
+
+    // Second pass: fill remaining required slots with any available worker
+    REQUIRED_SLOTS.forEach(slot => {
+      if (coveredSlots.has(slot)) return;
+      // Find any worker who can do a shift covering this slot
+      const altSlots = slotPriority.filter(sk => SLOT_COVERS[sk].includes(slot));
+      for (const slotKey of altSlots) {
+        const candidate = sorted.find(w =>
+          !assignments[w.name] &&
+          canWork(w) &&
+          w.slots.includes(slotKey)
+        );
+        if (candidate) {
+          assignments[candidate.name] = slotKey;
+          SLOT_COVERS[slotKey].forEach(s => coveredSlots.add(s));
+          break;
+        }
+      }
+    });
+
+    // Assign rest days to unassigned workers who hit their weekly limit
+    flexWorkers.forEach(w => {
+      if (!assignments[w.name]) {
+        assignments[w.name] = 'вых';
+      }
+    });
+
+    // Write to schedule and update counters
+    flexWorkers.forEach(w => {
+      const slotKey = assignments[w.name];
+      sched[w.name][ds] = slotKey === 'вых' ? 'вых' : SLOT_SHIFT[slotKey];
+      if (slotKey !== 'вых') {
+        weeklyCount[weekIdx][w.name] = (weeklyCount[weekIdx][w.name] || 0) + 1;
+        // Count double shifts as 2 for weekly hours but 1 work day
+      }
+    });
+  });
+
+  // Ensure max 2 days off per worker per week — if someone has > 2 days off,
+  // convert extras to available shifts where slots still needed
+  // (simplified: trust the greedy above for now)
+
+  // Sync to salary
+  SCHEDULE_EMPLOYEES.forEach(({ name }) => syncShiftToSalary(name));
+  renderShiftsTable();
+  alert('Расписание сгенерировано! Проверьте и внесите коррективы при необходимости.');
 }
 
 function saveShiftData() {
