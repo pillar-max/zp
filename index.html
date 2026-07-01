@@ -5151,6 +5151,11 @@ const CORP_CLIENT_MAP = {
 // Service IDs for ТП and Эвакуация (same as used elsewhere in the app)
 const CORP_TP_ID   = '313';
 const CORP_EVAC_ID = '315';
+const CORP_MANIP_ID = '799'; // Манипулятор — входит в эвакуацию
+function isCorpEvac(d) {
+  const svc = String(d['UF_CRM_1695043676'] || '');
+  return svc === CORP_EVAC_ID || svc === CORP_MANIP_ID;
+}
 
 // Extract corp order amount: UF_CRM_1758038832 → fallback parse from COMMENTS
 function getCorpAmount(d) {
@@ -5265,7 +5270,7 @@ function renderCorpDashboard(deals, mpDeals, monthVal) {
   const DAY_SHORT = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 
   const tpDeals   = deals.filter(d => String(d['UF_CRM_1695043676']) === CORP_TP_ID);
-  const evacDeals = deals.filter(d => String(d['UF_CRM_1695043676']) === CORP_EVAC_ID);
+  const evacDeals = deals.filter(d => isCorpEvac(d));
   const totalSum  = deals.reduce((s,d) => s + (getCorpAmount(d)), 0);
   const allClients = [...new Set(deals.map(d => String(d['UF_CRM_1758038927'])).filter(Boolean))];
 
@@ -5795,7 +5800,7 @@ async function renderDbOrders() {
       start = r.next; if (deals.length > 5000) break;
     }
 
-    const evac = deals.filter(d => String(d[FIELD_SERVICE]) === '315');
+    const evac = deals.filter(d => isCorpEvac(d));
     const tp   = deals.filter(d => String(d[FIELD_SERVICE]) === '313');
     const other = deals.length - evac.length - tp.length;
 
@@ -6514,7 +6519,7 @@ function caExtractDoplata(comment) {
 
 
 const CA_SERVICE_CATEGORIES = [
-  ['Эвакуация',              ['эвак ']],
+  ['Эвакуация',              ['эвак ', 'манипулятор', 'манипул']],
   ['Запуск АКБ',             ['запуск акб', 'запуск  акб', 'завелся', 'завёлся']],
   ['Замена АКБ',             ['замена акб', 'замена ранее установленного акб']],
   ['Демонтаж/установка АКБ', ['демонтаж акб', 'установка акб']],
